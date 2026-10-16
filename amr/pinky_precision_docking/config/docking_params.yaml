@@ -1,41 +1,56 @@
 precision_docking_node:
   ros__parameters:
-    # Marker Settings
-    marker_size: 0.06           # meters (6cm x 6cm)
-    target_marker_id: -1        # Target Marker ID (-1: auto-detect & lock onto any marker)
-    aruco_dictionary_id: "DICT_5X5_250"  # Supports DICT_5X5_50, 5X5_100, 5X5_250
+    # 1. 트리거 및 FSM 설정 (Phase 1)
+    start_in_idle: true               # 시작 시 IDLE 상태 대기 (Nav2 충돌 방지)
+    trigger_service_name: "/docking/start"
+    cancel_service_name: "/docking/cancel"
 
-    # Topics
+    # 2. ArUco 마커 설정
+    marker_size: 0.06                 # 6cm x 6cm
+    target_marker_id: -1              # -1: 자동 락온 (모든 5x5 마커 인식)
+    aruco_dictionary_id: "DICT_5X5_250"
+
+    # 3. 토픽 설정
     use_compressed: true
     image_topic: "/camera/image_raw"
     camera_info_topic: "/camera/camera_info"
     cmd_vel_topic: "/cmd_vel"
 
-    # Docking Goal & Thresholds
-    target_distance: 0.20
-    distance_tolerance: 0.02
-    yaw_tolerance: 0.04
-    lateral_tolerance: 0.02
+    # 4. T-기동 설정 (Collinear 거친 정렬)
+    enable_t_maneuver: true           # 90도 직교 T-기동 사용
+    t_maneuver_min_dist: 0.20         # T-기동 진입 최소 거리 (m)
+    t_maneuver_lateral_speed: 0.05    # 횡이동 직진 속도 (m/s)
+    enable_wall_alignment: false
 
-    # Advanced Features (T-Maneuver Collinear Alignment)
-    enable_t_maneuver: true       # Orthogonal T-maneuver (90 deg turn -> lateral drive -> 90 deg return)
-    t_maneuver_min_dist: 0.20     # Minimum distance from marker to perform T-maneuver (m)
-    t_maneuver_lateral_speed: 0.05 # Low-speed lateral drive velocity (m/s)
-    enable_wall_alignment: false  # Pure direct marker pursuit (prevents turning away from marker)
-    enable_blind_push: true       # Use odometry for <10cm ultra-close docking (prevents marker lost)
-    vision_min_distance: 0.14     # Hand-off distance to odometry blind drive (m)
-    blind_push_speed: 0.04        # Low-speed straight push velocity (m/s)
+    # 5. 곡선 궤적 수렴 게인 (Phase 2: Stanley S-Curve)
+    enable_curved_approach: true      # S-Curve 부드러운 동축 수렴
+    kp_lateral: 1.5                   # 횡오차 수렴 게인
+    kp_wall_yaw: 1.8                  # 벽면 법선 직각도 유지 게인
+    max_curve_yaw_rate: 0.25          # 곡선 주행 시 최대 각속도 제한 (rad/s)
 
-    # Controller Gains & Limits
+    # 6. 센서 융합 설정 (Phase 3 & Phase 4: LiDAR & Ultrasonic)
+    enable_lidar_alignment: true      # 2D 라이다 벽면 정렬 사용
+    scan_topic: "/scan"
+    lidar_yaw_tolerance: 0.015        # 라이다 각도 허용치 (약 0.85도)
+
+    enable_ultrasonic_stop: true      # 초음파 3cm 정밀 멈춤 사용
+    ultrasonic_topic: "us_sensor/range"
+    target_distance: 0.03             # 최종 3cm 정지 목표 (m)
+    distance_tolerance: 0.005         # 5mm 허용오차 (m)
+    vision_min_distance: 0.14         # 카메라 사각지대 진입 거리 (m)
+    enable_blind_push: true           # 초음파 미수신 시 오도메트리 폴백
+    blind_push_speed: 0.03            # 초근접 전진 속도 (m/s)
+
+    # 7. 제어기 기본 게인 및 속도 제한
     kp_linear: 0.5
     kp_angular: 1.2
-    max_linear_vel: 0.10
+    max_linear_vel: 0.08
     max_angular_vel: 0.35
     min_linear_vel: 0.02
     min_angular_vel: 0.05
     invert_angular: false
 
-    # Safety & Filter
-    loss_timeout: 1.2
-    ema_alpha: 0.6
-    search_angular_vel: 0.20
+    # 8. 안전 및 필터
+    loss_timeout: 1.2                 # 마커 유실 판정 시간 (초)
+    ema_alpha: 0.6                    # 지터 방지 EMA 필터 가중치
+    search_angular_vel: 0.20          # 탐색 회전 속도 (rad/s)
