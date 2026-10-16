@@ -18,10 +18,22 @@ def generate_launch_description():
         description='Path to ROS 2 parameters YAML file'
     )
 
+    start_in_idle_arg = DeclareLaunchArgument(
+        'start_in_idle',
+        default_value='False',
+        description='Start in IDLE state waiting for trigger service'
+    )
+
     target_distance_arg = DeclareLaunchArgument(
         'target_distance',
-        default_value='0.20',
-        description='Target stopping distance from marker (meters)'
+        default_value='0.03',
+        description='Target stopping distance from marker (meters, 3cm)'
+    )
+
+    search_angular_vel_arg = DeclareLaunchArgument(
+        'search_angular_vel',
+        default_value='0.12',
+        description='Rotation speed during marker search (rad/s)'
     )
 
     use_compressed_arg = DeclareLaunchArgument(
@@ -74,7 +86,9 @@ def generate_launch_description():
         parameters=[
             LaunchConfiguration('params_file'),
             {
+                'start_in_idle': LaunchConfiguration('start_in_idle'),
                 'target_distance': LaunchConfiguration('target_distance'),
+                'search_angular_vel': LaunchConfiguration('search_angular_vel'),
                 'use_compressed': LaunchConfiguration('use_compressed'),
                 'target_marker_id': LaunchConfiguration('target_marker_id'),
                 'aruco_dictionary_id': LaunchConfiguration('aruco_dictionary_id'),
@@ -88,7 +102,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         params_file_arg,
+        start_in_idle_arg,
         target_distance_arg,
+        search_angular_vel_arg,
         use_compressed_arg,
         target_marker_id_arg,
         aruco_dict_arg,
