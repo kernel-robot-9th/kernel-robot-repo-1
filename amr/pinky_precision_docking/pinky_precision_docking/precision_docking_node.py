@@ -363,21 +363,24 @@ class PrecisionDockingNode(Node):
         dict_id = dict_mapping.get(self.aruco_dict_name, cv2.aruco.DICT_5X5_250)
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(dict_id)
 
-        try:
-            self.aruco_params = cv2.aruco.DetectorParameters()
-        except AttributeError:
+        if hasattr(cv2.aruco, 'DetectorParameters_create'):
             self.aruco_params = cv2.aruco.DetectorParameters_create()
+        else:
+            self.aruco_params = cv2.aruco.DetectorParameters()
 
         # Robust detection tuning for high reliability
-        self.aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-        self.aruco_params.cornerRefinementWinSize = 5
-        self.aruco_params.cornerRefinementMaxIterations = 30
-        self.aruco_params.cornerRefinementMinAccuracy = 0.1
-
         try:
+            self.aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+            self.aruco_params.cornerRefinementWinSize = 5
+            self.aruco_params.cornerRefinementMaxIterations = 30
+            self.aruco_params.cornerRefinementMinAccuracy = 0.1
+        except Exception as e:
+            self.get_logger().warn(f"Could not set cornerRefinementMethod: {e}")
+
+        if hasattr(cv2.aruco, 'ArucoDetector'):
             self.detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
             self.use_new_detector_api = True
-        except AttributeError:
+        else:
             self.use_new_detector_api = False
 
     def _camera_info_callback(self, msg: CameraInfo):
