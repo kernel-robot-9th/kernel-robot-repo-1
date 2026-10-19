@@ -30,6 +30,8 @@ setup(
             'omx_packer = couping_integration.omx_packer:main',
             'pinky_signal = couping_integration.pinky_signal:main',
             'fake_pinky = couping_integration.fake_pinky:main',
+            'fake_twin = couping_integration.fake_twin:main',
+            'sim_camera = couping_integration.sim_camera:main',
         ],
     },
 )

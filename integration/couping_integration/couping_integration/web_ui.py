@@ -7,6 +7,7 @@
 관리자 화면: 들어온 주문, 품목별 상태, 두산 진행, 실시간 카메라, 로봇 상태, 신호 로그, 정지·재개
 브라우저와는 HTTP 로만 주고받는다: 상태는 /events (Server-Sent Events) 로 밀어주고,
 카메라는 /camera.mjpg (비전 노드의 /couping/vision/image/compressed) 로 보낸다.
+Gazebo 디지털 트윈 화면은 /sim.mjpg (sim_camera 노드의 /couping/sim/image/compressed).
 같은 와이파이의 휴대폰에서도 고객 화면을 열 수 있다 (실습실 내부망 전용, 인증 없음).
 """
 import json
@@ -54,8 +55,8 @@ class WebUI(Node):
         self.logs = []
         self.stock = {}
         self.detected = 0
-        self.frame = None
-        self.frame_seq = 0
+        self.frames = {'vision': None, 'sim': None}  # 진열대 카메라 · Gazebo 디지털 트윈 (JPEG)
+        self.frame_seqs = {'vision': 0, 'sim': 0}
         self.frame_cv = threading.Condition()
         self.camera_clients = 0
         self.camera_on = False
@@ -72,7 +73,10 @@ class WebUI(Node):
         self.create_subscription(String, '/couping/packer/status', self.on_packer, 10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(String, '/couping/vision/detections', self.on_detections, latched)
-        self.create_subscription(CompressedImage, '/couping/vision/image/compressed', self.on_image, 1)
+        self.create_subscription(CompressedImage, '/couping/vision/image/compressed',
+                                 lambda msg: self.on_image('vision', msg), 1)
+        self.create_subscription(CompressedImage, '/couping/sim/image/compressed',
+                                 lambda msg: self.on_image('sim', msg), 1)
         self.triggers = {n: self.create_client(Trigger, f'/couping/{n}') for n in ('stop', 'resume', 'confirm')}
         self.vision_param = self.create_client(SetParameters, '/shelf_vision/set_parameters')
 
@@ -180,10 +184,10 @@ class WebUI(Node):
             self.robots['vision'] = {'ok': True, 'text': f'인식 {len(items)}개'}
             self.bump()
 
-    def on_image(self, msg):
+    def on_image(self, source, msg):
         with self.frame_cv:
-            self.frame = bytes(msg.data)
-            self.frame_seq += 1
+            self.frames[source] = bytes(msg.data)
+            self.frame_seqs[source] += 1
             self.frame_cv.notify_all()
 
     # ---------- 주기 확인 ----------
@@ -313,7 +317,9 @@ def make_handler(node, web_dir):
             if path == '/events':
                 return self.events()
             if path == '/camera.mjpg':
-                return self.camera()
+                return self.camera('vision')
+            if path == '/sim.mjpg':
+                return self.camera('sim')
             self.send_json(404, {'error': 'not found'})
 
         def do_POST(self):
@@ -360,29 +366,33 @@ def make_handler(node, web_dir):
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
-        def camera(self):
+        def camera(self, source):
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
-            node.camera_clients += 1
+            vision = source == 'vision'  # 진열대 카메라만 비전 노드 미리보기를 켜고 끔
+            if vision:
+                node.camera_clients += 1
             seen = -1
             try:
                 while rclpy.ok():
-                    node.camera_last = time.monotonic()
+                    if vision:
+                        node.camera_last = time.monotonic()
                     with node.frame_cv:
-                        if node.frame_seq == seen:
+                        if node.frame_seqs[source] == seen:
                             node.frame_cv.wait(timeout=2.0)
-                        if node.frame_seq == seen or node.frame is None:
+                        if node.frame_seqs[source] == seen or node.frames[source] is None:
                             continue
-                        seen, frame = node.frame_seq, node.frame
+                        seen, frame = node.frame_seqs[source], node.frames[source]
                     self.wfile.write(b'--frame\r\nContent-Type: image/jpeg\r\nContent-Length: '
                                      + str(len(frame)).encode() + b'\r\n\r\n' + frame + b'\r\n')
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
             finally:
-                node.camera_clients -= 1
+                if vision:
+                    node.camera_clients -= 1
 
     return Handler
 

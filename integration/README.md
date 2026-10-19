@@ -12,7 +12,9 @@
 | `couping_integration/order_terminal.py` | 터미널 번호 주문 (`ros2 run couping_integration order` → `1, 3`) |
 | `couping_integration/omx_packer.py` | `/couping/packer/cmd` 를 받아 양팔 OMX ACT 정책(`omx/scripts/run_act.sh`) 실행. `fake:=true` 면 5초 뒤 done |
 | `couping_integration/pinky_signal.py`, `monitor.py`, `omx_check.py` | 핑키 신호 시험, 신호 모니터, OMX 연결 확인 |
-| `couping_integration/fake_pinky.py` | 가짜 핑키(Nav2 `NavigateToPose` 흉내). 거리 / `speed` 초 뒤 도착. `ros2 param set /fake_pinky fail true` 면 도착 실패 |
+| `couping_integration/fake_pinky.py` | 가짜 핑키(Nav2 `NavigateToPose` 흉내). 거리 / `speed` 초 뒤 도착. `ros2 param set /fake_pinky fail true` 면 도착 실패. 이동 중 `/amcl_pose`·`/odom` 을 내서 Gazebo 디지털 트윈의 가상 핑키도 움직임 |
+| `couping_integration/fake_twin.py` | 가짜 두산·OMX 동작을 디지털 트윈에 보냄. 두산 '집는 중' 마다 `/dsr01/joint_states`, OMX 포장 중에는 LeRobot 과 같은 UDP(127.0.0.1:5005) |
+| `couping_integration/sim_camera.py` | 디지털 트윈(도메인 `sim_domain`, 기본 10)의 위에서 본 카메라 `/camera` → JPEG → 연동 도메인 `/couping/sim/image/compressed`. 관리자 화면 카메라 칸의 '시뮬레이션' 버튼(`/sim.mjpg`) |
 | `launch/integration.launch.py` | 두산 bringup(선택) · 두산 피킹 · 비전(선택) · OMX · 오케스트레이터 · 웹 UI 를 한 번에 |
 | `config/integration.yaml` | 오케스트레이터(단계 on/off, 타임아웃, 핑키 맵 좌표) · OMX 정책 설정 |
 
@@ -36,6 +38,16 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 export ROS_DOMAIN_ID=87 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 ros2 launch couping_integration integration.launch.py dsr_bringup:=false fake:=true fake_pinky:=true
 ```
+**Gazebo 디지털 트윈에서 보기** (`~/pinky_pro` 의 `pinky_gz_sim`, 터미널 2개. 둘 다 같은 `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`)
+```bash
+# 1) 디지털 트윈: 연동 도메인(87)의 핑키·두산 신호를 시뮬 도메인(10)으로 받아 따라 움직임
+source ~/doosan_ws/install/setup.bash && source ~/pinky_pro/install/setup.bash
+ros2 launch pinky_gz_sim digital_twin.launch.xml real_domain:=87 sim_domain:=10
+# 2) 가짜 주문 흐름 + 디지털 트윈 연결 + 관리자 화면에 Gazebo 화면
+export ROS_DOMAIN_ID=87
+ros2 launch couping_integration integration.launch.py dsr_bringup:=false fake:=true fake_pinky:=true fake_twin:=true sim_view:=true
+```
+관리자 화면 카메라 칸에서 '시뮬레이션' → '화면 켜기'. 실제 로봇일 때는 `fake*` 없이 `sim_view:=true` 만 주고, 디지털 트윈은 `real_domain:=<실제 로봇 도메인>` 으로 실행.
 - 주문자 `http://<노트북 IP>:8080/`, 관리자 `http://<노트북 IP>:8080/admin` (`web_port:=` 로 변경, `web:=false` 로 끔)
 - **핑키 없이 두산 + OMX** (박스는 사람이 옮김): `pinky:=false omx:=true manual_transfer:=true`
   → 피킹이 끝나면 관리자 화면에 **'박스 옮김 완료'** 버튼이 뜨고, 누르면 OMX 포장 시작 (`/couping/confirm`)
