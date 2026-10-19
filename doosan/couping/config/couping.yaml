@@ -1,0 +1,63 @@
+# Couping 1차 연동 설정. 현장에서 값을 맞춘 뒤 colcon build 를 다시 하거나
+# launch 에 config:=<이 파일 경로> 를 넘기면 됩니다.
+
+/**/doosan_picker:
+  ros__parameters:
+    robot_model: e0509
+    # 주문 품목을 비전으로 찾아 수평으로 집음 (couping/pick_core.py).
+    # 자세는 ~/couping_ws/calib/poses.json (python3 -m couping.teach_pose front|place_above|place|place_2..)
+    # 핑키 자세가 없을 때: return = 진열대 제자리에 도로 놓기(반복 시험), hold = front 에서 들고 대기(1품목만)
+    no_place: return
+    vel: 60.0                   # 일반 직선 이동 mm/s
+    vel_slow: 20.0              # 컵 근처·내려놓기 mm/s
+    velj: 30.0                  # 관절 이동 deg/s
+    open: 375                   # 접근할 때 그리퍼 열림 (0 닫힘 ~ 750 완전 열림)
+    release: 375                # 내려놓을 때 여는 정도
+    force: 300                  # 잡는 힘
+    approach: 150.0             # 컵 정면 대기 거리 mm
+    depth: 7.0                  # 컵 중심 대비 추가 전진 mm (tide 시험 후 +7)
+    dz: 0.0                     # 목표 높이 보정 mm
+    lift: 15.0                  # 잡은 뒤 들어올림 mm
+    retries: 2                  # 상자에 넣은 뒤 카메라로 확인해 진열대에 그대로 있으면 다시 시도하는 횟수
+
+/**/omx_packer:
+  ros__parameters:
+    # TODO: 박스 덮개 닫기 정책 학습 후 경로 교체. 그 전엔 기존 정책으로 흐름만 시험
+    policy_path: ~/il_ws/src/lerobot/outputs/train/omx_act_jun_pumpkin/checkpoints/last/pretrained_model
+    dataset_name: jun_pumpkin
+    task: Pick up the pumpkin and put it in the box
+    episode_time: 30
+    hf_user: euchxn
+    # OMX 팔로워 보드 (시리얼 고정 경로)
+    port: /dev/serial/by-id/usb-ROBOTIS_OpenRB-150_1A6E643A50323952582E3120FF07262C-if00
+
+/**/orchestrator:
+  ros__parameters:
+    enable_picker: true
+    enable_pinky: true
+    enable_packer: true
+    return_home: true
+    picker_timeout: 120.0       # 품목 하나당 (주문 품목 수만큼 곱함)
+    nav_timeout: 120.0
+    packer_timeout: 90.0        # episode_time + 카메라 워밍업 여유
+    nav_action: /navigate_to_pose
+    map_frame: map
+    # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
+    pack_pose: [0.0, 0.0, 0.0]  # OMX 앞 정차 위치
+    home_pose: [0.0, 0.0, 0.0]  # 두산 앞 적재 위치
+
+/**/shelf_vision:
+  ros__parameters:
+    # 비전 노드는 ~/venv/yolo Python 으로 실행 (vision.launch.py). 모델을 바꾸면 여기만 수정
+    weights: ~/couping_ws/runs/shelf/yolo11s_1280_v2/weights/best.pt   # 이전 모델: yolo11s_1280/weights/best.pt
+    conf: 0.5
+    num_frames: 5               # 한 번 인식에 찍는 장수 (다수결)
+    vote_ratio: 0.6             # 5장 중 3장 이상에서 보여야 인정
+    min_depth_valid: 0.15       # 박스 안 깊이 유효 비율 (투명 컵은 20% 안팎)
+    max_depth: 1.8              # 컵이 이보다 멀게 나오면 깊이 이상으로 보고 카메라를 다시 엶 (m)
+    camera_frame: camera_color_optical_frame
+    preview_rate: 0.0           # 예: 2.0 이면 미리보기 그림을 2Hz 로 발행
+    # 카메라→두산 베이스 변환. 강의 캘리브 GUI(~/HamdEyeCal) 결과 .npy 또는 couping.handeye_calib 의 .json
+    handeye_file: ~/HamdEyeCal/결과/T_base_camera.npy
+    base_frame: base_link
+    grasp_center: true          # 목표 = 컵 앞면에서 반지름만큼 안쪽(컵 중심)

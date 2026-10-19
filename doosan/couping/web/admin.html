@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Couping 관리자</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#2348C9;--ink:#15171C;--sub:#5B6170;--line:#E2E5EB}
+*{box-sizing:border-box}
+body{margin:0;background:#F3F4F6;font-family:'IBM Plex Sans KR',system-ui,sans-serif;color:var(--ink);font-size:14px;line-height:1.5}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:'IBM Plex Mono',monospace}
+.muted{font-size:12px;color:var(--sub)}
+header{background:#fff;border-bottom:1px solid var(--line)}
+.hwrap{max-width:1440px;margin:0 auto;padding:14px 28px;display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#EEF0F4;color:#3D4350}
+.chip .d{width:7px;height:7px;border-radius:50%;background:#8A90A0}
+.chip.ok{background:#E7F4EC;color:#17663F}.chip.ok .d{background:#1E8E5A}
+.chip.warn{background:#FDEEE4;color:#9A3412}.chip.warn .d{background:#C2410C}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid #D5D9E1;border-radius:8px;background:#fff;color:var(--ink);font-weight:600}
+.btn:hover{background:#EEF1F8}
+main{max-width:1440px;margin:0 auto;padding:24px 28px 40px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+h2{margin:0;font-size:16px}
+.hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;gap:8px}
+.ord{width:100%;text-align:left;padding:12px 14px;border-radius:12px;background:#fff;border:1.5px solid var(--line);color:inherit}
+.ord:hover{border-color:var(--accent)}
+.ord.sel{background:#F2F5FD;border-color:var(--accent)}
+.pill{display:inline-block;flex:none;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:#EEF0F4;color:#3D4350}
+.pill.run{background:#E8EDFB;color:#1A3698}.pill.ok{background:#E7F4EC;color:#17663F}.pill.warn{background:#FDEEE4;color:#9A3412}
+.new{padding:1px 7px;border-radius:999px;background:#C2410C;color:#fff;font-size:11px;font-weight:700}
+.grid4{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.sw{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.stages{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.stages .bar{height:4px;border-radius:999px;background:#C9CED8}
+.stages li{display:flex;flex-direction:column;gap:8px}
+.stages .lb{font-weight:500;color:var(--sub)}
+.stages li.done .bar{background:#1E8E5A}.stages li.done .lb{color:var(--ink);font-weight:700}
+.stages li.now .bar{background:var(--accent)}.stages li.now .lb{color:var(--ink);font-weight:700}
+.stages li.fail .bar{background:#C2410C}
+.cam{background:#14161B;border-radius:14px;overflow:hidden}
+.camhd{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;color:#E6E8EE}
+.camimg{aspect-ratio:16/9;background:#1C1F26;display:flex;align-items:center;justify-content:center;color:#A3A9B6}
+.camimg img{width:100%;height:100%;object-fit:contain;display:block}
+.robot{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#F7F8FA}
+.log{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.empty{padding:22px 0;text-align:center;color:var(--sub);font-size:13px;border:1px dashed #D5D9E1;border-radius:10px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="hwrap">
+<div style="display:flex;align-items:center;gap:10px">
+<div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></div>
+<div style="display:flex;flex-direction:column"><strong style="font-size:16px">Couping</strong><span class="muted">관리자 · 스마트 물류 관제</span></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span class="chip" id="conn"><span class="d"></span>연결 중</span>
+<span class="chip warn" id="pausedChip" hidden><span class="d"></span>대기열 일시정지</span>
+<span class="chip mono" id="stateChip">IDLE</span>
+</div>
+<div style="margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+<button class="btn" id="stopBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>정지</button>
+<button class="btn" id="resumeBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M8 5l11 7-11 7V5z"/></svg>재개</button>
+<span class="muted" id="ctlMsg">즉시 정지는 비상정지 버튼</span>
+</div>
+</div></header>
+
+<main>
+<section class="col" style="flex:1 1 340px;max-width:420px">
+<div class="box">
+<div class="hd"><h2>들어온 주문</h2><span class="muted" id="ordCount"></span></div>
+<div id="orders" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+<div class="box" id="detail"></div>
+</section>
+
+<section class="col" style="flex:999 1 560px">
+<div class="box">
+<div class="hd" style="flex-wrap:wrap;justify-content:flex-start;align-items:center"><h2 id="curTitle">진행 중인 주문 없음</h2><span class="muted" id="curItems"></span></div>
+<ol class="stages" id="stages"></ol>
+<div style="margin-top:18px;padding:14px 16px;border-radius:10px;background:#F7F8FA;display:flex;flex-direction:column">
+<span class="muted">두산 로봇팔</span><strong id="picker">대기 중</strong>
+</div>
+</div>
+<div class="cam">
+<div class="camhd"><span class="chip" style="background:#3A1B1B;color:#FFB4B4"><span class="d" style="background:#F26B6B"></span>LIVE</span><strong>진열대 카메라</strong><span style="font-size:12px;color:#A3A9B6">RealSense D455F · YOLO11s</span>
+<button class="btn" id="camBtn" style="margin-left:auto;min-height:32px;background:#262A33;border-color:#3A3F4A;color:#E6E8EE">화면 켜기</button></div>
+<div class="camimg" id="camBox"><span id="camMsg">화면 켜기를 누르면 실시간 영상이 나와요</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:18px;padding:12px 16px;font-size:12px;color:#A3A9B6"><span>마지막 인식 <b style="color:#E6E8EE" id="detCount">-</b></span><span id="stockLine"></span></div>
+</div>
+</section>
+
+<aside class="col" style="flex:1 1 300px;max-width:380px">
+<div class="box"><h2 style="margin-bottom:12px">로봇 상태</h2><div id="robots" style="display:flex;flex-direction:column;gap:8px"></div></div>
+<div class="box"><h2 style="margin-bottom:10px">신호 로그</h2><div class="log mono" id="logs"></div></div>
+</aside>
+</main>
+
+<script>
+const COLORS = {tomato:'#D64545', carrot:'#E07B1F', salad:'#2F9455', bath_tissue:'#3E7BE6', tide:'#C99A17', paper_towel:'#8B5CD6'};
+const LOC = {tomato:'1층 오른쪽', carrot:'2층 오른쪽', salad:'3층 오른쪽', bath_tissue:'2층 왼쪽', tide:'1층 왼쪽', paper_towel:'3층 왼쪽'};
+const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','두산'],['포장 시작','핑키 → OMX'],['배송 시작','핑키'],['배송 완료','']];
+const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PACK:'포장 시작', PACKING:'포장 중', RETURNING:'배송 시작', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
+const TONE = {PICKING:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
+const ROBOTS = [['doosan','두산 E0509'],['vision','진열대 카메라'],['pinky','핑키'],['omx','OMX']];
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S = null, sel = null, seen = new Set(), first = true;
+
+function stateOf(o) { return o.state === 'queued' && S.paused ? '일시정지' : (STATE_KO[o.state] || o.state); }
+function toneOf(o) { return o.state === 'queued' && S.paused ? 'warn' : (TONE[o.state] || ''); }
+function summary(o) {
+  const n = {}; o.lines.forEach((l) => { n[l.name] = (n[l.name] || 0) + 1; });
+  return Object.entries(n).map(([k, v]) => v > 1 ? `${k} ×${v}` : k).join(' · ');
+}
+
+function render() {
+  const os = S.orders;
+  if (!sel || !os.find((o) => o.id === sel)) sel = S.current || (os[0] && os[0].id);
+  const waiting = os.filter((o) => o.state === 'queued' || o.state === 'sent').length;
+  $('ordCount').textContent = `${os.length}건 · 대기 ${waiting}건`;
+  $('orders').innerHTML = os.length ? os.map((o) => {
+    const isNew = !first && !seen.has(o.id);
+    return `<button class="ord ${o.id === sel ? 'sel' : ''}" data-id="${esc(o.id)}" aria-pressed="${o.id === sel}">
+      <div style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-weight:500">${esc(o.id)}</span>${isNew || (o.state === 'queued' && o.id !== S.current) ? '<span class="new">NEW</span>' : ''}
+      <span class="pill ${toneOf(o)}" style="margin-left:auto">${esc(stateOf(o))}</span></div>
+      <div style="margin-top:6px;font-weight:600">${esc(summary(o))}</div>
+      <div class="muted" style="margin-top:2px">${esc(o.time)} · ${o.lines.length}개 · ${esc(o.channel)}</div></button>`;
+  }).join('') : '<div class="empty">아직 들어온 주문이 없어요</div>';
+  os.forEach((o) => seen.add(o.id)); first = false;
+
+  const d = os.find((o) => o.id === sel);
+  $('detail').innerHTML = d ? `<div class="hd" style="margin-bottom:4px"><h2>주문 ${esc(d.id)} 상세</h2><span class="pill ${toneOf(d)}">${esc(stateOf(d))}</span></div>
+    <div class="muted" style="margin-bottom:14px">${esc(d.time)} 접수 · ${esc(d.channel)} · 두산 명령 <span class="mono">pick:${esc(d.items.join(','))}</span>${d.detail ? '<br>' + esc(d.detail) : ''}</div>
+    <div class="grid4 muted" style="padding:0 4px 6px;border-bottom:1px solid #ECEEF2"><span>품목</span><span>진열대</span><span style="text-align:right">상태</span></div>
+    ${d.lines.map((l) => {
+      const t = l.state === '상자에 넣음' ? 'ok' : l.state === '담는 중' ? 'run' : (l.state === '담지 못함' || l.state === '다시 담는 중') ? 'warn' : '';
+      return `<div class="grid4" style="padding:10px 4px;border-bottom:1px solid #F1F2F5"><span style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:${COLORS[l.item]}"></span><strong>${esc(l.name)}</strong></span><span style="font-size:13px;color:#3D4350">${LOC[l.item] || ''}</span><span style="text-align:right"><span class="pill ${t}">${esc(l.state)}</span></span></div>`;
+    }).join('')}` : '<div class="empty">주문을 고르면 상세가 보여요</div>';
+
+  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','MOVING_TO_PACK','PACKING','RETURNING'].includes(o.state) && o.id === sel);
+  $('curTitle').textContent = cur ? `진행 중 · 주문 ${cur.id}` : '진행 중인 주문 없음';
+  $('curItems').textContent = cur ? summary(cur) : '';
+  const st = cur ? cur.stage : -2;
+  $('stages').innerHTML = STAGES.map(([lb, who], i) => {
+    const cls = st === -1 ? (i === 1 ? 'fail' : '') : i < st || (st === 4 && i === 4) ? 'done' : i === st ? 'now' : '';
+    return `<li class="${cls}"><div class="bar"></div><span class="lb">${lb}</span><span class="muted">${who}</span></li>`;
+  }).join('');
+  $('picker').textContent = S.picker.text || '대기 중';
+
+  $('robots').innerHTML = ROBOTS.map(([k, name]) => {
+    const r = S.robots[k] || {};
+    return `<div class="robot"><span class="sw" style="background:${r.ok ? '#1E8E5A' : '#C2410C'}"></span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><strong>${name}</strong><span class="muted">${esc(r.text)}</span></div><span class="pill ${r.ok ? 'ok' : 'warn'}">${r.ok ? '정상' : '확인 필요'}</span></div>`;
+  }).join('');
+  const lc = {ok:'#17663F', cmd:'#1A3698', warn:'#9A3412', info:'#15171C'};
+  $('logs').innerHTML = S.logs.length ? S.logs.map((l) => `<div style="display:flex;gap:10px"><span style="color:#7A8090">${esc(l.t)}</span><span style="color:${lc[l.tone] || '#15171C'}">${esc(l.msg)}</span></div>`).join('') : '<span class="muted">아직 신호가 없어요</span>';
+
+  $('pausedChip').hidden = !S.paused;
+  $('stateChip').textContent = S.state;
+  $('detCount').textContent = S.detected ? S.detected + '개' : '-';
+  $('stockLine').textContent = S.catalog.map((c) => `${c.name} ${S.stock[c.key] ?? '-'}`).join(' · ');
+}
+
+$('orders').addEventListener('click', (e) => { const b = e.target.closest('.ord'); if (b) { sel = b.dataset.id; render(); } });
+async function ctl(name) {
+  $('ctlMsg').textContent = '보내는 중…';
+  try { const r = await fetch('/api/' + name, {method: 'POST', body: '{}'}); const d = await r.json(); $('ctlMsg').textContent = d.message || (d.ok ? '완료' : '실패'); }
+  catch (e) { $('ctlMsg').textContent = '서버 연결 실패'; }
+}
+$('stopBtn').addEventListener('click', () => ctl('stop'));
+$('resumeBtn').addEventListener('click', () => ctl('resume'));
+$('camBtn').addEventListener('click', () => {
+  const on = !$('camBox').querySelector('img');
+  $('camBox').innerHTML = on ? '<img src="/camera.mjpg?' + Date.now() + '" alt="진열대 카메라 실시간 영상">' : '<span id="camMsg">화면이 꺼져 있어요</span>';
+  $('camBtn').textContent = on ? '화면 끄기' : '화면 켜기';
+});
+
+const es = new EventSource('/events');
+es.onopen = () => { $('conn').className = 'chip ok'; $('conn').lastChild.textContent = '서버 연결됨'; };
+es.onerror = () => { $('conn').className = 'chip warn'; $('conn').lastChild.textContent = '서버 연결 끊김'; };
+es.onmessage = (ev) => { S = JSON.parse(ev.data); render(); };
+</script>
+</body>
+</html>
