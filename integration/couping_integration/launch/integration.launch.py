@@ -14,7 +14,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -67,10 +67,11 @@ def generate_launch_description():
         DeclareLaunchArgument('web_port', default_value='8080'),
 
         dsr_bringup,
-        IncludeLaunchDescription(
+        # GroupAction 으로 감싸야 vision.launch 에 넘긴 config(두산 설정)가 바깥 'config'(연동 설정)를 덮어쓰지 않음
+        GroupAction([IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('couping'), 'launch', 'vision.launch.py')),
-            launch_arguments={'config': doosan_config}.items(),
+            launch_arguments={'config': doosan_config}.items())],
             condition=IfCondition(LaunchConfiguration('vision'))),
         Node(package='couping', executable='doosan_picker', namespace=LaunchConfiguration('robot_name'),
              parameters=[doosan_config, {'robot_model': LaunchConfiguration('model'),

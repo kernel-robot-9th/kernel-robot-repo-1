@@ -6,7 +6,7 @@
 ## 구성
 | 파일 | 역할 |
 |---|---|
-| `couping_integration/orchestrator.py` | 주문 대기열. `/couping/order` 를 받아 `PICKING → MOVING_TO_PACK → PACKING → RETURNING → DONE`. 두산은 `/couping/picker/cmd`(`pick:tomato,salad`), 핑키는 Nav2 `/navigate_to_pose`, OMX 는 `/couping/packer/cmd`. 상태 `/couping/state`, 주문별 `/couping/order/status`, 서비스 `/couping/stop`·`/couping/resume`·`/couping/start` |
+| `couping_integration/orchestrator.py` | 주문 대기열. `/couping/order` 를 받아 `PICKING(두산이 상자에 담음) → PACKING(OMX 포장) → DELIVERING(핑키가 배송 구역으로 이송) → [RETURNING] → DONE`. 두산은 `/couping/picker/cmd`(`pick:tomato,salad`), 핑키는 Nav2 `/navigate_to_pose`, OMX 는 `/couping/packer/cmd`. 상태 `/couping/state`, 주문별 `/couping/order/status`, 서비스 `/couping/stop`·`/couping/resume`·`/couping/start` |
 | `couping_integration/web_ui.py` | 웹 서버 겸 ROS 노드 (추가 설치 없음). 주문자 `/`, 관리자 `/admin`, 실시간 상태 `/events`(SSE), 주문 `POST /api/order`, 정지·재개 `POST /api/stop`·`/api/resume`, 카메라 `/camera.mjpg` |
 | `web/customer.html`, `web/admin.html` | 주문자 화면(상품 고르기 → 주문 → 주문 확인·상품 담는 중·포장 시작·배송 시작·배송 완료), 관리자 화면(들어온 주문·품목별 상태·진행 단계·카메라·로봇 상태·신호 로그·정지/재개) |
 | `couping_integration/order_terminal.py` | 터미널 번호 주문 (`ros2 run couping_integration order` → `1, 3`) |
@@ -36,5 +36,5 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 - **핑키 없이 두산 + OMX** (박스는 사람이 옮김): `pinky:=false omx:=true manual_transfer:=true`
   → 피킹이 끝나면 관리자 화면에 **'박스 옮김 완료'** 버튼이 뜨고, 누르면 OMX 포장 시작 (`/couping/confirm`)
 - OMX 는 OMX 팀 `omx/scripts/run_act.sh` 를 실행한다. 정책 경로·카메라는 `config/integration.yaml` 의 `omx_packer` 에서 (비우면 스크립트 기본값)
-- 핑키·OMX 단계를 켜려면 `pinky:=true`, `omx:=true` 와 `config/integration.yaml` 의 `pack_pose`, `home_pose`, OMX 정책 경로를 채운다
+- 핑키·OMX 단계를 켜려면 `pinky:=true`, `omx:=true` 와 `config/integration.yaml` 의 `deliver_pose`(배송 구역), `home_pose`, OMX 정책 경로를 채운다
 - **실제 모드와 fake 모드를 같은 `ROS_DOMAIN_ID` 에서 동시에 띄우지 말 것** (두 피킹 노드가 같은 주문을 받아 실제 로봇이 움직임)

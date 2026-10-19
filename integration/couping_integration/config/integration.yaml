@@ -21,7 +21,7 @@
     enable_picker: true
     enable_pinky: true
     enable_packer: true
-    return_home: true
+    return_home: false          # 배송 구역에 간 뒤 home_pose 로 복귀할지
     picker_timeout: 240.0       # 품목 하나당 (주문 품목 수만큼 곱함). 카메라 확인 후 재시도(최대 3번, 한 번 약 65초) 포함
     nav_timeout: 120.0
     packer_timeout: 120.0       # episode_time(60) + 카메라·모델 로딩 여유
@@ -30,5 +30,5 @@
     nav_action: /navigate_to_pose
     map_frame: map
     # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
-    pack_pose: [0.0, 0.0, 0.0]  # OMX 앞 정차 위치
-    home_pose: [0.0, 0.0, 0.0]  # 두산 앞 적재 위치
+    deliver_pose: [0.0, 0.0, 0.0]  # 포장 완료 후 핑키가 이송할 배송 구역 [x, y, yaw]
+    home_pose: [0.0, 0.0, 0.0]     # 복귀 위치 (return_home: true 일 때)

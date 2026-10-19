@@ -109,9 +109,9 @@ h2{margin:0;font-size:16px}
 <script>
 const COLORS = {tomato:'#D64545', carrot:'#E07B1F', salad:'#2F9455', bath_tissue:'#3E7BE6', tide:'#C99A17', paper_towel:'#8B5CD6'};
 const LOC = {tomato:'1층 오른쪽', carrot:'2층 오른쪽', salad:'3층 오른쪽', bath_tissue:'2층 왼쪽', tide:'1층 왼쪽', paper_towel:'3층 왼쪽'};
-const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','두산'],['포장 시작','핑키 → OMX'],['배송 시작','핑키'],['배송 완료','']];
-const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PACK:'포장 시작', WAIT_TRANSFER:'박스 옮기는 중', PACKING:'포장 중', RETURNING:'배송 시작', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
-const TONE = {WAIT_TRANSFER:'warn', PICKING:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
+const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','두산'],['포장 시작','OMX'],['배송 시작','핑키'],['배송 완료','']];
+const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', WAIT_TRANSFER:'박스 옮기는 중', PACKING:'포장 중', DELIVERING:'배송 중', RETURNING:'핑키 복귀', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
+const TONE = {WAIT_TRANSFER:'warn', PICKING:'run', DELIVERING:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
 const ROBOTS = [['doosan','두산 E0509'],['vision','진열대 카메라'],['pinky','핑키'],['omx','OMX']];
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -148,7 +148,7 @@ function render() {
       return `<div class="grid4" style="padding:10px 4px;border-bottom:1px solid #F1F2F5"><span style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:${COLORS[l.item]}"></span><strong>${esc(l.name)}</strong></span><span style="font-size:13px;color:#3D4350">${LOC[l.item] || ''}</span><span style="text-align:right"><span class="pill ${t}">${esc(l.state)}</span></span></div>`;
     }).join('')}` : '<div class="empty">주문을 고르면 상세가 보여요</div>';
 
-  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','MOVING_TO_PACK','WAIT_TRANSFER','PACKING','RETURNING'].includes(o.state) && o.id === sel);
+  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','WAIT_TRANSFER','PACKING','DELIVERING','RETURNING'].includes(o.state) && o.id === sel);
   $('curTitle').textContent = cur ? `진행 중 · 주문 ${cur.id}` : '진행 중인 주문 없음';
   $('curItems').textContent = cur ? summary(cur) : '';
   const st = cur ? cur.stage : -2;
