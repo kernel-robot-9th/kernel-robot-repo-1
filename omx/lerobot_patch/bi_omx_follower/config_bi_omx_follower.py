@@ -21,3 +21,5 @@ class BiOmxArmConfig:
 class BiOmxFollowerConfig(RobotConfig):
     left_arm_config: BiOmxArmConfig
     right_arm_config: BiOmxArmConfig
+    # Extra cameras not attached to an arm (e.g. head/top camera)
+    cameras: dict[str, CameraConfig] = field(default_factory=dict)

@@ -1,6 +1,7 @@
 import logging
 from functools import cached_property
 
+from lerobot.cameras.utils import make_cameras_from_configs
 from lerobot.processor import RobotAction, RobotObservation
 from lerobot.utils.decorators import check_if_already_connected, check_if_not_connected
 
@@ -38,7 +39,9 @@ class BiOmxFollower(Robot):
         self._sim_pub = SimPublisher.from_env()  # OMX_SIM_UDP 가 없으면 아무 동작 안 함
 
         # For compatibility with code that expects `robot.cameras`
-        self.cameras = {**self.left_arm.cameras, **self.right_arm.cameras}
+        # Extra cameras not attached to an arm (e.g. head camera)
+        self.head_cameras = make_cameras_from_configs(config.cameras)
+        self.cameras = {**self.left_arm.cameras, **self.right_arm.cameras, **self.head_cameras}
 
     @property
     def _motors_ft(self) -> dict[str, type]:
@@ -52,6 +55,7 @@ class BiOmxFollower(Robot):
         return {
             **{f"left_{k}": v for k, v in self.left_arm._cameras_ft.items()},
             **{f"right_{k}": v for k, v in self.right_arm._cameras_ft.items()},
+            **{name: (cfg.height, cfg.width, 3) for name, cfg in self.config.cameras.items()},
         }
 
     @cached_property
@@ -64,12 +68,18 @@ class BiOmxFollower(Robot):
 
     @property
     def is_connected(self) -> bool:
-        return self.left_arm.is_connected and self.right_arm.is_connected
+        return (
+            self.left_arm.is_connected
+            and self.right_arm.is_connected
+            and all(cam.is_connected for cam in self.head_cameras.values())
+        )
 
     @check_if_already_connected
     def connect(self, calibrate: bool = True) -> None:
         self.left_arm.connect(calibrate)
         self.right_arm.connect(calibrate)
+        for cam in self.head_cameras.values():
+            cam.connect()
 
     @property
     def is_calibrated(self) -> bool:
@@ -92,6 +102,8 @@ class BiOmxFollower(Robot):
         obs_dict = {}
         obs_dict.update({f"left_{k}": v for k, v in self.left_arm.get_observation().items()})
         obs_dict.update({f"right_{k}": v for k, v in self.right_arm.get_observation().items()})
+        for name, cam in self.head_cameras.items():
+            obs_dict[name] = cam.read_latest() if hasattr(cam, "read_latest") else cam.async_read()
         self._sim_pub.publish(obs_dict)
         return obs_dict
 
@@ -112,3 +124,5 @@ class BiOmxFollower(Robot):
     def disconnect(self):
         self.left_arm.disconnect()
         self.right_arm.disconnect()
+        for cam in self.head_cameras.values():
+            cam.disconnect()
