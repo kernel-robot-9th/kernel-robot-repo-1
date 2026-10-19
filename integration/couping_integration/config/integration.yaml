@@ -26,20 +26,22 @@
     transfer_timeout: 600.0
     nav_action: /navigate_to_pose
     map_frame: map
-    # 맵 좌표 [x(m), y(m), yaw(rad)]. 맵에서 대략 정한 값이며 yaw 는 모두 0. TODO: 실제 핑키로 RViz 2D Goal Pose 확인 후 수정
+    # arena_map 좌표 [x(m), y(m), yaw(rad)]. Gazebo 디지털 트윈 배치(진열대·OMX) 앞 빈 곳에서 정하고,
+    # arena_map 에서 벽·장애물과 13cm 이상 떨어지게 맞춘 값. yaw 는 진열대·OMX 를 바라보는 방향.
+    # TODO: 실제 핑키로 RViz 2D Goal Pose 확인 후 수정
     # 피킹 구역. 주문에 든 품목의 구역을 이 순서대로 들르고, 구역마다 도착하면 두산이 그 구역 품목을 집음
     pick_zones: [daily, food]
     daily:                      # 생활용품
       items: [tide, paper_towel, bath_tissue]
-      pose: [0.3, 1.5, 0.0]
+      pose: [0.13, 1.45, -3.14] # Gazebo 오른쪽 위 진열대(shelf_a 2개) 앞
     food:                       # 식품
       items: [tomato, carrot, salad]
-      pose: [1.1, 1.1, 0.0]
-    pack_pose: [1.1, 0.3, 0.0]  # OMX 앞 정차 위치
-    home_pose: [0.0, 0.0, 0.0]  # 핑키 대기 위치 (주문 끝나면 복귀)
+      pose: [1.13, 1.01, -1.57] # Gazebo 가운데 아래 진열대(shelf_b) 옆
+    pack_pose: [0.97, 0.23, 0.0]  # OMX 앞 정차 위치 (Gazebo 왼쪽 아래 OMX 2대 앞)
+    home_pose: [0.17, 0.01, 1.57] # 핑키 대기 위치 (Gazebo 왼쪽 위 방). 주문 끝나면 복귀
 
 /**/fake_pinky:
   ros__parameters:
     # fake_pinky:=true 일 때만 쓰는 가짜 핑키 (실제 핑키 없이 시험)
-    start_pose: [0.0, 0.0, 0.0] # home_pose 와 같게
+    start_pose: [0.17, 0.01, 1.57] # home_pose 와 같게
     speed: 0.2                  # m/s, 이동 시간 = 거리 / speed
