@@ -2,14 +2,16 @@
 
 /**/omx_packer:
   ros__parameters:
-    # TODO: 박스 덮개 닫기 정책 학습 후 경로 교체. 그 전엔 기존 정책으로 흐름만 시험
-    policy_path: ~/il_ws/src/lerobot/outputs/train/omx_act_jun_pumpkin/checkpoints/last/pretrained_model
-    dataset_name: jun_pumpkin
-    task: Pick up the pumpkin and put it in the box
-    episode_time: 30
-    hf_user: euchxn
-    # OMX 팔로워 보드 (시리얼 고정 경로)
-    port: /dev/serial/by-id/usb-ROBOTIS_OpenRB-150_1A6E643A50323952582E3120FF07262C-if00
+    # 양팔 OMX (OMX 팀 omx/scripts/run_act.sh). 비운 값은 run_act.sh 기본값을 씀
+    run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
+    policy_path: ''             # 예: ~/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model
+    left_cam: ''                # 예: /dev/video4  (lerobot-find-cameras opencv 로 확인, RealSense 번호와 겹치지 않게)
+    right_cam: ''
+    head_cam: ''
+    task: Packaging the box     # 학습 때 문장과 같게
+    episode_time: 60
+    ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
+    fake_seconds: 5.0           # fake:=true 일 때 OMX 대신 기다리는 시간
 
 /**/orchestrator:
   ros__parameters:
@@ -19,7 +21,9 @@
     return_home: true
     picker_timeout: 120.0       # 품목 하나당 (주문 품목 수만큼 곱함)
     nav_timeout: 120.0
-    packer_timeout: 90.0        # episode_time + 카메라 워밍업 여유
+    packer_timeout: 120.0       # episode_time(60) + 카메라·모델 로딩 여유
+    manual_transfer: false      # 핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면 '박스 옮김 완료'
+    transfer_timeout: 600.0
     nav_action: /navigate_to_pose
     map_frame: map
     # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체

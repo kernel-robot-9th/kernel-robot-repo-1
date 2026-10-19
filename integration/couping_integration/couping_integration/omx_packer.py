@@ -1,10 +1,12 @@
 """OMX 포장 노드 (SR_34, 36).
 
-/couping/packer/cmd 에 "start" 를 받으면 ~/il_ws/scripts/eval.sh 로 LeRobot ACT 정책을
+/couping/packer/cmd 에 "start" 를 받으면 OMX 팀의 omx/scripts/run_act.sh (양팔 OMX, LeRobot ACT) 를
 한 에피소드 실행하고, 종료 코드에 따라 /couping/packer/status 에 "done" / "fail:<이유>" 를 발행한다.
 "stop" 을 받으면 실행 중인 정책을 종료한다.
-signal_only: true 이면 정책 대신 omx_check.py 로 실제 모터 6개의 현재 위치만 읽고 done 을 보낸다
+run_script 를 비우면 예전 단일 팔 ~/il_ws/scripts/eval.sh 를 쓴다.
+signal_only: true 이면 정책 대신 omx_check.py 로 ports 의 각 팔 모터 위치만 읽고 done 을 보낸다
 (OMX 가 연결돼 신호를 받는지 확인용. 토크·카메라·정책 사용 안 함).
+fake: true 이면 OMX 없이 fake_seconds 초 뒤 done (연동 흐름 시험).
 
 LeRobot 은 Python 3.10 venv, ROS 2 Jazzy 는 Python 3.12 라서 같은 프로세스에서 쓸 수 없다.
 그래서 별도 프로세스로 실행하고, ROS 환경 변수를 지워서 venv 가 ROS 패키지를 불러오지 않게 한다.
@@ -27,6 +29,13 @@ class OmxPacker(Node):
 
     def __init__(self):
         super().__init__('omx_packer')
+        self.declare_parameter('run_script', '')   # 양팔: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
+        self.declare_parameter('left_cam', '')     # 비우면 run_act.sh 기본값
+        self.declare_parameter('right_cam', '')
+        self.declare_parameter('head_cam', '')
+        self.declare_parameter('ports', [''])      # signal_only 때 확인할 팔 포트들
+        self.declare_parameter('fake', False)
+        self.declare_parameter('fake_seconds', 5.0)
         self.declare_parameter('eval_script', os.path.expanduser('~/il_ws/scripts/eval.sh'))
         self.declare_parameter('policy_path', '')
         self.declare_parameter('dataset_name', 'close_box')
@@ -43,7 +52,8 @@ class OmxPacker(Node):
         self.proc = None
         self.stop_requested = False
         self.lock = threading.Lock()
-        mode = ' [신호 확인 모드: 모터 응답만 확인]' if self.get_parameter('signal_only').value else ''
+        mode = (' [fake: OMX 없이 흉내]' if self.get_parameter('fake').value
+                else ' [신호 확인 모드: 모터 응답만 확인]' if self.get_parameter('signal_only').value else '')
         self.get_logger().info(f'omx_packer 준비 완료{mode}. /couping/packer/cmd 대기 중')
 
     def publish(self, text):
@@ -68,12 +78,35 @@ class OmxPacker(Node):
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(ROS_ENV_PREFIXES) and k not in ROS_ENV_NAMES}
         os.makedirs(get('log_dir'), exist_ok=True)
+        if get('fake'):
+            self.log_path = os.path.join(get('log_dir'), 'fake_latest.log')
+            sec = float(get('fake_seconds'))
+            self.get_logger().info(f'[fake] start 수신 → {sec:.0f}초 뒤 done')
+            return subprocess.Popen(['bash', '-c', f'sleep {sec}; echo fake OMX done'],
+                                    stdin=subprocess.DEVNULL, stdout=open(self.log_path, 'w'),
+                                    stderr=subprocess.STDOUT, start_new_session=True)
         if get('signal_only'):
             self.log_path = os.path.join(get('log_dir'), 'omx_check_latest.log')
-            self.get_logger().info('[신호 확인 모드] start 수신 → OMX 모터 응답 확인')
+            ports = [p for p in get('ports') if p] or [get('port')]
+            self.get_logger().info(f'[신호 확인 모드] start 수신 → OMX 모터 응답 확인 {ports}')
             check = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'omx_check.py')
+            cmd = ' && '.join(f'"{get("venv_python")}" "{check}" "{p}"' for p in ports)
             return subprocess.Popen(
-                [get('venv_python'), check, get('port')], env=env,
+                ['bash', '-c', cmd], env=env,
+                stdin=subprocess.DEVNULL, stdout=open(self.log_path, 'w'), stderr=subprocess.STDOUT,
+                start_new_session=True)
+        if get('run_script'):
+            for k, v in (('POLICY_PATH', get('policy_path')), ('LEFT_CAM', get('left_cam')),
+                         ('RIGHT_CAM', get('right_cam')), ('HEAD_CAM', get('head_cam')),
+                         ('TASK', get('task')), ('EPISODE_TIME', str(get('episode_time')))):
+                if v:
+                    env[k] = os.path.expanduser(v)
+            script = os.path.expanduser(get('run_script'))
+            self.log_path = os.path.join(get('log_dir'), 'run_act_latest.log')
+            self.get_logger().info(f'{script} 실행 (policy={env.get("POLICY_PATH", "스크립트 기본값")}), '
+                                   f'로그: {self.log_path}')
+            return subprocess.Popen(
+                ['bash', script], env=env,
                 stdin=subprocess.DEVNULL, stdout=open(self.log_path, 'w'), stderr=subprocess.STDOUT,
                 start_new_session=True)
         env.update({

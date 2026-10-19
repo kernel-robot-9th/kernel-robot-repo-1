@@ -87,6 +87,10 @@ h2{margin:0;font-size:16px}
 <div style="margin-top:18px;padding:14px 16px;border-radius:10px;background:#F7F8FA;display:flex;flex-direction:column">
 <span class="muted">두산 로봇팔</span><strong id="picker">대기 중</strong>
 </div>
+<div id="transferBox" hidden style="margin-top:12px;padding:14px 16px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<div style="flex:1;min-width:200px;display:flex;flex-direction:column"><strong style="color:#9A3412">박스를 OMX 앞으로 옮겨 주세요</strong><span class="muted">핑키 대신 사람이 옮기는 중 · 옮긴 뒤 버튼을 누르면 OMX 포장 시작</span></div>
+<button class="btn" id="confirmBtn" style="background:#C2410C;border-color:#C2410C;color:#fff">박스 옮김 완료</button>
+</div>
 </div>
 <div class="cam">
 <div class="camhd"><span class="chip" style="background:#3A1B1B;color:#FFB4B4"><span class="d" style="background:#F26B6B"></span>LIVE</span><strong>진열대 카메라</strong><span style="font-size:12px;color:#A3A9B6">RealSense D455F · YOLO11s</span>
@@ -106,8 +110,8 @@ h2{margin:0;font-size:16px}
 const COLORS = {tomato:'#D64545', carrot:'#E07B1F', salad:'#2F9455', bath_tissue:'#3E7BE6', tide:'#C99A17', paper_towel:'#8B5CD6'};
 const LOC = {tomato:'1층 오른쪽', carrot:'2층 오른쪽', salad:'3층 오른쪽', bath_tissue:'2층 왼쪽', tide:'1층 왼쪽', paper_towel:'3층 왼쪽'};
 const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','두산'],['포장 시작','핑키 → OMX'],['배송 시작','핑키'],['배송 완료','']];
-const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PACK:'포장 시작', PACKING:'포장 중', RETURNING:'배송 시작', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
-const TONE = {PICKING:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
+const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PACK:'포장 시작', WAIT_TRANSFER:'박스 옮기는 중', PACKING:'포장 중', RETURNING:'배송 시작', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
+const TONE = {WAIT_TRANSFER:'warn', PICKING:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
 const ROBOTS = [['doosan','두산 E0509'],['vision','진열대 카메라'],['pinky','핑키'],['omx','OMX']];
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -144,7 +148,7 @@ function render() {
       return `<div class="grid4" style="padding:10px 4px;border-bottom:1px solid #F1F2F5"><span style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:${COLORS[l.item]}"></span><strong>${esc(l.name)}</strong></span><span style="font-size:13px;color:#3D4350">${LOC[l.item] || ''}</span><span style="text-align:right"><span class="pill ${t}">${esc(l.state)}</span></span></div>`;
     }).join('')}` : '<div class="empty">주문을 고르면 상세가 보여요</div>';
 
-  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','MOVING_TO_PACK','PACKING','RETURNING'].includes(o.state) && o.id === sel);
+  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','MOVING_TO_PACK','WAIT_TRANSFER','PACKING','RETURNING'].includes(o.state) && o.id === sel);
   $('curTitle').textContent = cur ? `진행 중 · 주문 ${cur.id}` : '진행 중인 주문 없음';
   $('curItems').textContent = cur ? summary(cur) : '';
   const st = cur ? cur.stage : -2;
@@ -162,6 +166,7 @@ function render() {
   $('logs').innerHTML = S.logs.length ? S.logs.map((l) => `<div style="display:flex;gap:10px"><span style="color:#7A8090">${esc(l.t)}</span><span style="color:${lc[l.tone] || '#15171C'}">${esc(l.msg)}</span></div>`).join('') : '<span class="muted">아직 신호가 없어요</span>';
 
   $('pausedChip').hidden = !S.paused;
+  $('transferBox').hidden = S.state !== 'WAIT_TRANSFER';
   $('stateChip').textContent = S.state;
   $('detCount').textContent = S.detected ? S.detected + '개' : '-';
   $('stockLine').textContent = S.catalog.map((c) => `${c.name} ${S.stock[c.key] ?? '-'}`).join(' · ');
@@ -175,6 +180,7 @@ async function ctl(name) {
 }
 $('stopBtn').addEventListener('click', () => ctl('stop'));
 $('resumeBtn').addEventListener('click', () => ctl('resume'));
+$('confirmBtn').addEventListener('click', () => ctl('confirm'));
 $('camBtn').addEventListener('click', () => {
   const on = !$('camBox').querySelector('img');
   $('camBox').innerHTML = on ? '<img src="/camera.mjpg?' + Date.now() + '" alt="진열대 카메라 실시간 영상">' : '<span id="camMsg">화면이 꺼져 있어요</span>';

@@ -45,6 +45,7 @@ class Orchestrator(Node):
         super().__init__('orchestrator')
         for name, default in [('signal_only', False), ('enable_picker', True), ('enable_pinky', True),
                               ('enable_packer', True), ('return_home', True),
+                              ('manual_transfer', False), ('transfer_timeout', 600.0),
                               ('picker_timeout', 120.0),  # 품목 하나당
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
@@ -80,6 +81,8 @@ class Orchestrator(Node):
         self.create_service(Trigger, '/couping/start', self.on_start)
         self.create_service(Trigger, '/couping/stop', self.on_stop)
         self.create_service(Trigger, '/couping/resume', self.on_resume)
+        self.confirm_event = threading.Event()   # 핑키 없이 사람이 박스를 옮긴 뒤 /couping/confirm
+        self.create_service(Trigger, '/couping/confirm', self.on_confirm)
         self.worker = threading.Thread(target=self.order_loop, daemon=True)
         self.worker.start()
         self.get_logger().info('orchestrator 준비 완료. 주문: ros2 run couping_integration order')
@@ -154,6 +157,14 @@ class Orchestrator(Node):
         response.success, response.message = True, f'재개: 대기 주문 {len(self.orders)}건'
         return response
 
+    def on_confirm(self, request, response):
+        if self.state != 'WAIT_TRANSFER':
+            response.success, response.message = False, f'지금은 박스 옮김 단계가 아닙니다 ({self.state})'
+            return response
+        self.confirm_event.set()
+        response.success, response.message = True, '박스 옮김 확인 → 포장 시작'
+        return response
+
     def order_loop(self):
         while rclpy.ok():
             with self.order_cv:
@@ -185,6 +196,12 @@ class Orchestrator(Node):
                     self.run_unit('pinky', p('nav_timeout'))
                 else:
                     self.navigate(p('pack_pose'), p('nav_timeout'))
+            elif p('manual_transfer') and p('enable_packer'):
+                # 핑키 대신 사람이 박스를 OMX 앞으로 옮기고 관리자 화면에서 확인
+                self.confirm_event.clear()
+                self.set_state('WAIT_TRANSFER')
+                self.publish_order(order, 'WAIT_TRANSFER', '박스를 OMX 앞으로 옮긴 뒤 관리자 화면에서 확인')
+                self.wait_or_stop(self.confirm_event.is_set, p('transfer_timeout'))
             if p('enable_packer'):
                 self.set_state('PACKING')
                 self.publish_order(order, 'PACKING')
