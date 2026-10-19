@@ -1,0 +1,11 @@
+<?xml version='1.0'?>
+<launch>
+    <!-- 1.5m x 2.25m Arena Dedicated Nav2 Bringup Launch -->
+    <arg name="map" default="$(find-pkg-share pinky_navigation)/map/arena_map.yaml"/>
+    <arg name="params_file" default="$(find-pkg-share pinky_navigation)/params/nav2_params_arena.yaml"/>
+
+    <include file="$(find-pkg-share pinky_navigation)/launch/bringup_launch.xml">
+        <arg name="map" value="$(var map)"/>
+        <arg name="params_file" value="$(var params_file)"/>
+    </include>
+</launch>
