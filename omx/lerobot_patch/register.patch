@@ -1,0 +1,70 @@
+diff --git a/src/lerobot/robots/utils.py b/src/lerobot/robots/utils.py
+index 92da597f..9c73d5d8 100644
+--- a/src/lerobot/robots/utils.py
++++ b/src/lerobot/robots/utils.py
+@@ -56,6 +56,10 @@ def make_robot_from_config(config: RobotConfig) -> Robot:
+         from .bi_so_follower import BiSOFollower
+ 
+         return BiSOFollower(config)
++    elif config.type == "bi_omx_follower":
++        from .bi_omx_follower import BiOmxFollower
++
++        return BiOmxFollower(config)
+     elif config.type == "reachy2":
+         from .reachy2 import Reachy2Robot
+ 
+diff --git a/src/lerobot/scripts/lerobot_record.py b/src/lerobot/scripts/lerobot_record.py
+index 72708ba2..17c85706 100644
+--- a/src/lerobot/scripts/lerobot_record.py
++++ b/src/lerobot/scripts/lerobot_record.py
+@@ -104,6 +104,7 @@ from lerobot.robots import (  # noqa: F401
+     Robot,
+     RobotConfig,
+     bi_openarm_follower,
++    bi_omx_follower,
+     bi_so_follower,
+     earthrover_mini_plus,
+     hope_jr,
+@@ -119,6 +120,7 @@ from lerobot.teleoperators import (  # noqa: F401
+     Teleoperator,
+     TeleoperatorConfig,
+     bi_openarm_leader,
++    bi_omx_leader,
+     bi_so_leader,
+     homunculus,
+     koch_leader,
+diff --git a/src/lerobot/scripts/lerobot_teleoperate.py b/src/lerobot/scripts/lerobot_teleoperate.py
+index dad479b2..1ea41cc7 100644
+--- a/src/lerobot/scripts/lerobot_teleoperate.py
++++ b/src/lerobot/scripts/lerobot_teleoperate.py
+@@ -71,6 +71,7 @@ from lerobot.robots import (  # noqa: F401
+     Robot,
+     RobotConfig,
+     bi_openarm_follower,
++    bi_omx_follower,
+     bi_so_follower,
+     earthrover_mini_plus,
+     hope_jr,
+@@ -86,6 +87,7 @@ from lerobot.teleoperators import (  # noqa: F401
+     Teleoperator,
+     TeleoperatorConfig,
+     bi_openarm_leader,
++    bi_omx_leader,
+     bi_so_leader,
+     gamepad,
+     homunculus,
+diff --git a/src/lerobot/teleoperators/utils.py b/src/lerobot/teleoperators/utils.py
+index db685f39..2a710a4a 100644
+--- a/src/lerobot/teleoperators/utils.py
++++ b/src/lerobot/teleoperators/utils.py
+@@ -83,6 +83,10 @@ def make_teleoperator_from_config(config: TeleoperatorConfig) -> "Teleoperator":
+         from .bi_so_leader import BiSOLeader
+ 
+         return BiSOLeader(config)
++    elif config.type == "bi_omx_leader":
++        from .bi_omx_leader import BiOmxLeader
++
++        return BiOmxLeader(config)
+     elif config.type == "reachy2_teleoperator":
+         from .reachy2_teleoperator import Reachy2Teleoperator
+ 
