@@ -1,0 +1,7 @@
+# 양팔 OMX 팔로워 보드 이름 고정 (10/19 확인: 왼팔 B89C3B42…, 오른팔 1A6E643A… — 모터 ID 11~16)
+# 설치: sudo cp 99-bi-omx.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2f5d", ATTRS{serial}=="B89C3B4250323952582E3120FF050D39", SYMLINK+="left_omx_follower"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2f5d", ATTRS{serial}=="1A6E643A50323952582E3120FF07262C", SYMLINK+="right_omx_follower"
+# 리더 보드(텔레오퍼레이션·데이터 수집용)는 꽂은 뒤 시리얼을 확인해 아래 형식으로 추가
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="2f5d", ATTRS{serial}=="<SERIAL>", SYMLINK+="left_omx_leader"
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="2f5d", ATTRS{serial}=="<SERIAL>", SYMLINK+="right_omx_leader"

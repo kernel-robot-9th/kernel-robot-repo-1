@@ -5,9 +5,12 @@
     # 양팔 OMX (OMX 팀 omx/scripts/run_act.sh). 비운 값은 run_act.sh 기본값을 씀
     run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
     policy_path: ''             # 예: ~/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model
-    left_cam: ''                # 예: /dev/video4  (lerobot-find-cameras opencv 로 확인, RealSense 번호와 겹치지 않게)
-    right_cam: ''
-    head_cam: ''
+    # 카메라는 /dev/videoN 대신 꽂힌 USB 자리 기준 경로 (다시 꽂아도 번호가 안 바뀜, 같은 자리에 꽂을 것)
+    # 10/19 확인: 왼손목 = 허브A 3번, 오른손목 = 허브B 4번, 머리(SNAP U2) = 허브B 2번
+    left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:4.3:1.0-video-index0
+    right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
+    head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.2:1.0-video-index0
+    cam_fourcc: MJPG            # 손목 카메라(Innomaker)가 USB 2 허브에서 기본 형식으론 영상이 안 나옴
     task: Packaging the box     # 학습 때 문장과 같게
     episode_time: 60
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
