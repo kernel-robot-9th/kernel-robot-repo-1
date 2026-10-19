@@ -1,13 +1,13 @@
 #!/bin/bash
 source ~/venv/il/bin/activate
 
-# ===== 확인필요 =====
-POLICY_PATH=$HOME/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model
-LEFT_CAM=/dev/video4
-RIGHT_CAM=/dev/video6
-HEAD_CAM=/dev/video8
-EPISODE_TIME=60
-TASK="Packaging the box"
+# ===== 확인필요 =====  (환경변수로 주면 그 값을 씀: 연동의 omx_packer 가 config 값으로 넘김)
+POLICY_PATH=${POLICY_PATH:-$HOME/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model}
+LEFT_CAM=${LEFT_CAM:-/dev/video4}
+RIGHT_CAM=${RIGHT_CAM:-/dev/video6}
+HEAD_CAM=${HEAD_CAM:-/dev/video8}
+EPISODE_TIME=${EPISODE_TIME:-60}
+TASK=${TASK:-"Packaging the box"}
 # ===================
 
 lerobot-record \

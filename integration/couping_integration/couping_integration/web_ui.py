@@ -30,7 +30,7 @@ from std_srvs.srv import Trigger
 from couping import catalog
 
 # 오케스트레이터 상태 → 고객에게 보이는 단계 (0 주문 확인 … 4 배송 완료)
-STAGE_OF = {'queued': 0, 'started': 0, 'PICKING': 1, 'MOVING_TO_PACK': 2, 'PACKING': 2,
+STAGE_OF = {'queued': 0, 'started': 0, 'PICKING': 1, 'MOVING_TO_PACK': 2, 'WAIT_TRANSFER': 2, 'PACKING': 2,
             'RETURNING': 3, 'DONE': 4}
 PROGRESS_RE = re.compile(r'(\d+)/(\d+) .*?\((\w+)\) (.*)')
 
@@ -69,10 +69,11 @@ class WebUI(Node):
         self.create_subscription(String, '/couping/order/status', self.on_order_status, 10)
         self.create_subscription(String, '/couping/picker/status', self.on_picker, 10)
         self.create_subscription(String, '/couping/state', self.on_state, 10)
+        self.create_subscription(String, '/couping/packer/status', self.on_packer, 10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(String, '/couping/vision/detections', self.on_detections, latched)
         self.create_subscription(CompressedImage, '/couping/vision/image/compressed', self.on_image, 1)
-        self.triggers = {n: self.create_client(Trigger, f'/couping/{n}') for n in ('stop', 'resume')}
+        self.triggers = {n: self.create_client(Trigger, f'/couping/{n}') for n in ('stop', 'resume', 'confirm')}
         self.vision_param = self.create_client(SetParameters, '/shelf_vision/set_parameters')
 
         rid = self.get_parameter('robot_id').value
@@ -154,6 +155,13 @@ class WebUI(Node):
                 self.log('두산 ' + data, 'ok' if data == 'done' else 'warn')
             self.bump()
 
+    def on_packer(self, msg):
+        with self.lock:
+            text = {'running': '포장 중', 'done': '포장 완료'}.get(msg.data, msg.data)
+            self.robots['omx'] = {'ok': not msg.data.startswith('fail'), 'text': text}
+            self.log('OMX ' + msg.data, 'warn' if msg.data.startswith('fail') else 'ok' if msg.data == 'done' else 'info')
+            self.bump()
+
     def on_state(self, msg):
         with self.lock:
             if msg.data != self.state:
@@ -185,8 +193,10 @@ class WebUI(Node):
         with self.lock:
             self.robots['pinky'] = ({'ok': True, 'text': 'Nav2 연결됨'} if self.count_publishers('/odom')
                                     else {'ok': False, 'text': '연결 안 됨'})
-            self.robots['omx'] = ({'ok': True, 'text': '대기'} if nodes_with('/couping/packer/cmd') > 1
-                                  else {'ok': False, 'text': '노드 없음'})
+            if nodes_with('/couping/packer/cmd') <= 1:
+                self.robots['omx'] = {'ok': False, 'text': '노드 없음'}
+            elif self.robots['omx']['text'] in ('노드 없음', '확인 중'):
+                self.robots['omx'] = {'ok': True, 'text': '대기'}
             if not self.count_publishers('/couping/vision/detections'):
                 self.robots['vision'] = {'ok': False, 'text': '비전 노드 없음'}
         if self.dsr_state.service_is_ready():
@@ -322,7 +332,7 @@ def make_handler(node, web_dir):
                 except RuntimeError as e:
                     return self.send_json(503, {'ok': False, 'error': str(e)})
                 return self.send_json(200, {'ok': True, 'id': oid})
-            if path in ('/api/stop', '/api/resume'):
+            if path in ('/api/stop', '/api/resume', '/api/confirm'):
                 ok, message = node.call_trigger(path.rsplit('/', 1)[1])
                 return self.send_json(200 if ok else 503, {'ok': ok, 'message': message})
             self.send_json(404, {'error': 'not found'})
