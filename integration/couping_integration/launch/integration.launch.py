@@ -8,6 +8,8 @@
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
     # 로봇·카메라 없이 주문 신호 흐름만 시험
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
+    # 핑키까지 가짜로 전체 흐름 시험 (가짜 Nav2 = fake_pinky)
+    ros2 launch couping_integration integration.launch.py dsr_bringup:=false fake:=true fake_pinky:=true
 핑키 쪽 bringup·navigation 은 핑키에서 따로 실행합니다.
 """
 import os
@@ -55,6 +57,8 @@ def generate_launch_description():
                               description='신호만 주고받기: 두산은 관절 각도, OMX 는 모터 위치만 읽고, 핑키는 주행 대신 pinky_signal 응답'),
         DeclareLaunchArgument('pinky', default_value='true', description='핑키 주행 단계 포함 (false 면 건너뜀)'),
         DeclareLaunchArgument('fake', default_value='false', description='두산 picker · OMX 를 로봇·카메라 없이 흉내 (신호 흐름 시험)'),
+        DeclareLaunchArgument('fake_pinky', default_value='false',
+                              description='실제 핑키 대신 가짜 Nav2(fake_pinky) 실행. 실제 핑키와 같은 ROS_DOMAIN_ID 에서 쓰지 말 것'),
         DeclareLaunchArgument('manual_transfer', default_value='false',
                               description='핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면에서 확인 (pinky:=false 와 함께)'),
         DeclareLaunchArgument('mode', default_value='real', description='real 또는 virtual(에뮬레이터, Docker 필요)'),
@@ -79,6 +83,8 @@ def generate_launch_description():
         Node(package='couping_integration', executable='omx_packer',
              parameters=[config, {'signal_only': signal_only, 'fake': fake}],
              output='screen', condition=IfCondition(omx)),
+        Node(package='couping_integration', executable='fake_pinky', parameters=[config], output='screen',
+             condition=IfCondition(LaunchConfiguration('fake_pinky'))),
         Node(package='couping_integration', executable='web_ui', output='screen',
              parameters=[{'port': ParameterValue(LaunchConfiguration('web_port'), value_type=int)}],
              condition=IfCondition(LaunchConfiguration('web'))),

@@ -1,7 +1,7 @@
 # 🚗 Pinky Pro 자율주행 (`pinky_navigation` 패키지)
 
 경기장(1.5m × 2.25m) SLAM 매핑(`slam_toolbox`) 및 Nav2 기반 자율주행(`AMCL` + `RegulatedPurePursuitController`) 패키지입니다.
-통합 오케스트레이터(`../integration/couping_integration`)의 `/navigate_to_pose` 액션 호출을 받아 **대기 위치(`home_pose`) → 피킹 위치(`pick_pose`) → OMX 포장 위치(`pack_pose`) → 대기 위치** 순서의 자율주행을 수행합니다.
+통합 오케스트레이터(`../integration/couping_integration`)의 `/navigate_to_pose` 액션 호출을 받아 **대기 위치(`home_pose`) → 주문 품목의 피킹 구역들(`daily`, `food` 의 `pose`) → OMX 포장 위치(`pack_pose`) → 대기 위치** 순서의 자율주행을 수행합니다.
 
 ---
 
@@ -117,7 +117,7 @@ source install/setup.bash
 ##### ① 실제 자율주행 모드 (기본값, `signal_only: false`)
 오케스트레이터가 별도의 문자열 토픽 대신 **Nav2 표준 액션 서버**를 직접 호출하여 주행 명령을 내리고 완료(`done`)/실패(`fail`) 결과를 받습니다.
 - **액션 이름**: `/navigate_to_pose` (`nav2_msgs/action/NavigateToPose`)
-- **목표 좌표 설정**: `integration/couping_integration/config/integration.yaml`의 `pick_pose: [x, y, yaw]`(피킹 지정 위치), `pack_pose: [x, y, yaw]`(OMX 앞), `home_pose: [x, y, yaw]`(핑키 대기 위치)
+- **목표 좌표 설정**: `integration/couping_integration/config/integration.yaml`의 구역별 `daily.pose`·`food.pose: [x, y, yaw]`(피킹 구역), `pack_pose: [x, y, yaw]`(OMX 앞), `home_pose: [x, y, yaw]`(핑키 대기 위치)
 - **완료 / 실패 판정 신호**:
   | 상태 | 반환 신호 (Action GoalStatus) | 오케스트레이터 동작 |
   |---|---|---|

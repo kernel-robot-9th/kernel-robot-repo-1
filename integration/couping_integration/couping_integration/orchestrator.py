@@ -2,9 +2,12 @@
 
 주문은 /couping/order (std_msgs/String, JSON {"id": "001", "items": ["tomato", "salad"]}) 로 받아
 대기열에 넣고 하나씩
-  MOVING_TO_PICK(핑키가 pick_pose 로) → PICKING(두산에 pick:tomato,salad) → MOVING_TO_PACK
-  → PACKING → RETURNING(핑키가 home_pose 로) → DONE
-순서로 진행한다. 두산과 핑키는 물리적으로 떨어져 있어, 핑키가 pick_pose 에 도착한 뒤 두산 피킹을 시작한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
+  [MOVING_TO_PICK(핑키가 구역 pose 로) → PICKING(두산에 그 구역 품목)] × 주문에 든 구역 수
+  → MOVING_TO_PACK → PACKING → RETURNING(핑키가 home_pose 로) → DONE
+순서로 진행한다. 두산과 핑키는 물리적으로 떨어져 있어, 핑키가 구역 위치에 도착한 뒤 두산 피킹을 시작한다.
+구역은 pick_zones 순서대로 들르고, 구역마다 <구역>.items(품목)와 <구역>.pose([x, y, yaw])를 둔다.
+두 번째 구역부터는 두산에 pick@<첫 자리>:<품목,...> 를 보내 앞 구역 품목과 놓는 자리가 겹치지 않게 한다.
+현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
 주문 입력 터미널: ros2 run couping_integration order
 /couping/start (std_srvs/Trigger) 는 품목 없는 주문(두산에 start)을 넣는다 (신호 확인용).
 /couping/stop 을 받거나 단계가 실패·시간 초과되면 핑키 주행을 취소하고 ERROR 로 멈추며,
@@ -51,9 +54,16 @@ class Orchestrator(Node):
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
                               ('nav_action', '/navigate_to_pose'), ('map_frame', 'map'),
-                              ('pick_pose', [0.0, 0.0, 0.0]), ('pack_pose', [0.0, 0.0, 0.0]),
+                              ('pick_zones', ['']), ('pack_pose', [0.0, 0.0, 0.0]),
                               ('home_pose', [0.0, 0.0, 0.0])]:
             self.declare_parameter(name, default)
+        self.zones = [z for z in self.get_parameter('pick_zones').value if z]
+        for zone in self.zones:
+            self.declare_parameter(f'{zone}.items', [''])
+            self.declare_parameter(f'{zone}.pose', [0.0, 0.0, 0.0])
+        unzoned = [it for it in catalog.ITEMS if self.zone_of(it) is None]
+        if self.get_parameter('enable_pinky').value and unzoned:
+            self.get_logger().warn(f'피킹 구역이 없는 품목: {unzoned} (이 품목 주문은 거부됨, pick_zones 확인)')
 
         self.state = 'IDLE'
         self.state_pub = self.create_publisher(String, '/couping/state', 10)
@@ -134,6 +144,10 @@ class Orchestrator(Node):
         if bad or not order['items']:
             self.publish_order(order, 'rejected', f'알 수 없는 품목 {bad or "(없음)"}')
             return
+        unzoned = [it for it in order['items'] if self.zone_of(it) is None]
+        if self.get_parameter('enable_pinky').value and unzoned:
+            self.publish_order(order, 'rejected', f'피킹 구역이 정해지지 않은 품목 {unzoned}')
+            return
         self.enqueue(order)
 
     def on_start(self, request, response):
@@ -186,18 +200,24 @@ class Orchestrator(Node):
         items = order['items']
         self.publish_order(order, 'started')
         try:
-            if p('enable_pinky'):
-                self.set_state('MOVING_TO_PICK')
-                self.publish_order(order, 'MOVING_TO_PICK')
-                if p('signal_only'):
-                    self.run_unit('pinky', p('nav_timeout'))
-                else:
-                    self.navigate(p('pick_pose'), p('nav_timeout'))
-            if p('enable_picker'):
-                self.set_state('PICKING')
-                self.publish_order(order, 'PICKING')
-                self.run_unit('picker', p('picker_timeout') * max(1, len(items)),
-                              'pick:' + ','.join(items) if items else 'start')
+            slot = 1  # 두산이 다음 품목을 놓을 자리 번호 (구역이 바뀌어도 이어서 셈)
+            for zone, zone_items in self.pick_stops(items):
+                if zone is not None:
+                    self.set_state('MOVING_TO_PICK')
+                    self.publish_order(order, 'MOVING_TO_PICK', zone)
+                    if p('signal_only'):
+                        self.run_unit('pinky', p('nav_timeout'))
+                    else:
+                        self.navigate(p(f'{zone}.pose'), p('nav_timeout'))
+                if p('enable_picker'):
+                    self.set_state('PICKING')
+                    self.publish_order(order, 'PICKING', zone or '')
+                    if not zone_items:
+                        cmd = 'start'
+                    else:
+                        cmd = ('pick:' if slot == 1 else f'pick@{slot}:') + ','.join(zone_items)
+                    self.run_unit('picker', p('picker_timeout') * max(1, len(zone_items)), cmd)
+                slot += len(zone_items)
             if p('enable_pinky'):
                 self.set_state('MOVING_TO_PACK')
                 self.publish_order(order, 'MOVING_TO_PACK')
@@ -228,6 +248,21 @@ class Orchestrator(Node):
             stage = self.state
             self.set_state(f'ERROR:{stage}:{e}')
             self.publish_order(order, 'ERROR', f'{stage}: {e}')
+
+    def zone_of(self, item):
+        for zone in self.zones:
+            if item in self.get_parameter(f'{zone}.items').value:
+                return zone
+        return None
+
+    def pick_stops(self, items):
+        """[(구역, 그 구역 품목들)] 을 pick_zones 순서로. 핑키를 안 쓰면 구역 없이 한 번에 집는다."""
+        if not self.get_parameter('enable_pinky').value:
+            return [(None, items)]
+        if not items:  # /couping/start 신호 확인: 첫 구역까지만 가서 두산에 start
+            return [(self.zones[0] if self.zones else None, [])]
+        return [(zone, [it for it in items if self.zone_of(it) == zone])
+                for zone in self.zones if any(self.zone_of(it) == zone for it in items)]
 
     def wait_or_stop(self, done, timeout):
         """done() 이 참이 될 때까지 기다린다. 정지 요청 또는 시간 초과면 StageError."""

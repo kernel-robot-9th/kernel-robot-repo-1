@@ -3,6 +3,7 @@
 /couping/picker/cmd 로 받는 명령
   pick:tomato,salad   주문 품목을 차례로 비전으로 찾아 수평으로 집고 핑키에 놓는다
                       (k번째 품목 → place_k 자세, 없으면 place)
+  pick@3:tide         놓는 자리를 3번부터 센다 (오케스트레이터가 구역을 나눠 보낼 때 앞 구역 자리와 겹치지 않게)
   stop                지금 품목까지만 하고 나머지는 하지 않음 (동작 중 즉시 정지는 비상정지 버튼)
   start               signal_only 일 때: 현재 관절 각도만 읽고 done
 /couping/picker/status 로 보내는 상태
@@ -23,6 +24,7 @@ launch 에서 namespace 를 로봇 이름(dsr01)으로 줘야 DSR 서비스가 �
   fake: true         로봇·카메라 없이 품목당 2초 뒤 완료 (주문 신호 흐름 확인)
 """
 import collections
+import re
 import signal
 import time
 
@@ -86,10 +88,10 @@ def main(args=None):
             if time.monotonic() >= end:
                 return
 
-    def run_order(items):
+    def run_order(items, first_slot=1):
         p = {k: get(k) for k in PARAMS}
         if not fake:
-            pick_core.check_slots(len(items))
+            pick_core.check_slots(first_slot - 1 + len(items))
         start_mode = dsr.get_robot_mode() if dsr else None
         skipped = []
         try:
@@ -107,7 +109,7 @@ def main(args=None):
                     res = pick_core.pick_verified(
                         node, dsr, item, p, log=log.info, dry_run=dry_run,
                         on_retry=lambda k, n, why, h=head: publish(f'progress:{h} 다시 시도 {k}/{n} - {why}'),
-                        slot=i, no_place=get('no_place'))
+                        slot=first_slot - 1 + i, no_place=get('no_place'))
                 except pick_core.PickFailed as e:  # 다시 시도해도 실패: 로봇은 관찰 자세, 다음 품목 계속
                     skipped.append(item)
                     publish(f'progress:{head} 실패 - {e}')
@@ -145,12 +147,12 @@ def main(args=None):
                 if signal_only:
                     if not fake:
                         read_joints()
-                elif cmd.startswith('pick:'):
-                    items = [s.strip() for s in cmd[len('pick:'):].split(',') if s.strip()]
+                elif m := re.fullmatch(r'pick(?:@(\d+))?:(.*)', cmd):
+                    items = [s.strip() for s in m.group(2).split(',') if s.strip()]
                     bad = [s for s in items if s not in catalog.ITEMS]
                     if bad or not items:
                         raise pick_core.PickError(f'알 수 없는 품목 {bad or "(없음)"}. 가능: {", ".join(catalog.ITEMS)}')
-                    run_order(items)
+                    run_order(items, int(m.group(1) or 1))
                 else:
                     raise pick_core.PickError(f"알 수 없는 명령 '{cmd}' (pick:<품목,...>)")
                 publish('done')
