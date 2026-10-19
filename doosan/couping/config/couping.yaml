@@ -29,6 +29,8 @@
     vote_ratio: 0.6             # 5장 중 3장 이상에서 보여야 인정
     min_depth_valid: 0.15       # 박스 안 깊이 유효 비율 (투명 컵은 20% 안팎)
     max_depth: 1.8              # 컵이 이보다 멀게 나오면 깊이 이상으로 보고 카메라를 다시 엶 (m)
+    usb2_fallback: true         # 카메라가 USB 2 로 잡히면 640x480 저해상도로라도 동작 (인식 정확도는 떨어짐)
+    usb2_offset_mm: [-52.0, 0.0, 0.0]   # USB 2 모드에서 로봇 좌표 보정 (1280x720 기준과 비교해 측정)
     camera_frame: camera_color_optical_frame
     preview_rate: 0.0           # 예: 2.0 이면 미리보기 그림을 2Hz 로 발행
     # 카메라→두산 베이스 변환. 강의 캘리브 GUI(~/HamdEyeCal) 결과 .npy 또는 couping.handeye_calib 의 .json
