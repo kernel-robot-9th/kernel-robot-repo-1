@@ -1,0 +1,27 @@
+# Couping 연동 설정 (오케스트레이터 · OMX packer). 두산 피킹·비전 설정은 couping/config/couping.yaml
+
+/**/omx_packer:
+  ros__parameters:
+    # TODO: 박스 덮개 닫기 정책 학습 후 경로 교체. 그 전엔 기존 정책으로 흐름만 시험
+    policy_path: ~/il_ws/src/lerobot/outputs/train/omx_act_jun_pumpkin/checkpoints/last/pretrained_model
+    dataset_name: jun_pumpkin
+    task: Pick up the pumpkin and put it in the box
+    episode_time: 30
+    hf_user: euchxn
+    # OMX 팔로워 보드 (시리얼 고정 경로)
+    port: /dev/serial/by-id/usb-ROBOTIS_OpenRB-150_1A6E643A50323952582E3120FF07262C-if00
+
+/**/orchestrator:
+  ros__parameters:
+    enable_picker: true
+    enable_pinky: true
+    enable_packer: true
+    return_home: true
+    picker_timeout: 120.0       # 품목 하나당 (주문 품목 수만큼 곱함)
+    nav_timeout: 120.0
+    packer_timeout: 90.0        # episode_time + 카메라 워밍업 여유
+    nav_action: /navigate_to_pose
+    map_frame: map
+    # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
+    pack_pose: [0.0, 0.0, 0.0]  # OMX 앞 정차 위치
+    home_pose: [0.0, 0.0, 0.0]  # 두산 앞 적재 위치
