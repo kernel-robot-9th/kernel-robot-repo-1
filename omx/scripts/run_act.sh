@@ -1,5 +1,8 @@
 #!/bin/bash
 source ~/venv/il/bin/activate
+# PyTorch 가 CPU 코어 전부(24)를 쓰면 카메라·저장 스레드와 경쟁해 제어 주기가 15Hz 로 떨어짐.
+# 6 으로 제한하면 1스텝 43ms → 3ms (10/19 연동 노트북 측정)
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-6}
 
 # ===== 확인필요 =====  (환경변수로 주면 그 값을 씀: 연동의 omx_packer 가 config 값으로 넘김)
 POLICY_PATH=${POLICY_PATH:-$HOME/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model}
