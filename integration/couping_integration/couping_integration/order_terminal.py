@@ -1,6 +1,6 @@
 """주문 입력 터미널: 번호로 품목을 골라 오케스트레이터에 주문을 보내고 진행 상황을 보여준다.
 
-  ros2 run couping order
+  ros2 run couping_integration order
 
   주문> 1, 3        토마토 + 샐러드 주문 (1 3 / 13 / tomato,salad 도 가능, 같은 번호 두 번 = 두 개)
   주문> s           대기열·상태 보기      주문> x   정지 (지금 품목까지만)

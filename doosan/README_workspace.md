@@ -27,8 +27,8 @@
 | 1 | 노트북 | `ros2 launch dsr_bringup2 dsr_bringup2_rviz.launch.py mode:=real host:=110.120.1.13 model:=e0509` |
 | 2 | 핑키 (`ssh pinky@192.168.4.1`) | `ros2 launch pinky_bringup bringup_robot.launch.xml` |
 | 3 | 핑키 (`ssh pinky@192.168.4.1`) | `python3 ~/pinky_signal.py` |
-| 4 | 노트북 | `ros2 launch couping integration.launch.py signal_only:=true dsr_bringup:=false` |
-| 5 | 노트북 | `ros2 run couping monitor` ← 신호 송수신 현황만 표시 |
+| 4 | 노트북 | `ros2 launch couping_integration integration.launch.py signal_only:=true dsr_bringup:=false` |
+| 5 | 노트북 | `ros2 run couping_integration monitor` ← 신호 송수신 현황만 표시 |
 | 6 | 노트북 | `ros2 service call /couping/start std_srvs/srv/Trigger` ← 시작 (반복 가능) |
 
 ## 1단계. 노트북 설치 (한 번만)
@@ -81,7 +81,7 @@ sudo nmcli con add type ethernet ifname enp130s0 con-name doosan ipv4.method man
    ```
 2. 노트북에서 실행합니다.
    ```bash
-   ros2 launch couping integration.launch.py signal_only:=true host:=<두산IP> model:=<모델>
+   ros2 launch couping_integration integration.launch.py signal_only:=true host:=<두산IP> model:=<모델>
    ```
    ```bash
    ros2 service call /couping/start std_srvs/srv/Trigger
@@ -94,7 +94,7 @@ sudo nmcli con add type ethernet ifname enp130s0 con-name doosan ipv4.method man
 
 **두산** (TP-01, TP-04)
 ```bash
-ros2 launch couping integration.launch.py omx:=false host:=110.120.1.13 model:=e0509 rviz:=true
+ros2 launch couping_integration integration.launch.py omx:=false host:=110.120.1.13 model:=e0509 rviz:=true
 ros2 topic pub --once /couping/picker/cmd std_msgs/msg/String "{data: start}"
 ```
 첫 시험은 `vel: 10`으로 하고, 비상정지 버튼을 손에 들고 진행하세요.
@@ -114,14 +114,14 @@ RViz에서 2D Pose Estimate로 초기 위치를 잡고 2D Goal Pose로 주행을
 
 **OMX** (TP-03, TP-06). 핑키를 `pack_pose`에 세워 둔 상태에서 실행합니다.
 ```bash
-ros2 run couping omx_packer --ros-args --params-file ~/couping_ws/src/couping/config/couping.yaml
+ros2 run couping_integration omx_packer --ros-args --params-file ~/couping_ws/src/couping/config/couping.yaml
 ros2 topic pub --once /couping/packer/cmd std_msgs/msg/String "{data: start}"
 ```
 실행 로그는 `~/couping_ws/log_omx/eval_latest.log`에 남습니다. 손목 카메라 오류가 나면 `~/il_ws/scripts/reset_wrist.sh`를 실행하세요.
 
 ## 4단계. 전체 연동 (TP-07, TP-08)
 ```bash
-ros2 launch couping integration.launch.py host:=110.120.1.13 model:=e0509   # 터미널 1
+ros2 launch couping_integration integration.launch.py host:=110.120.1.13 model:=e0509   # 터미널 1
 ros2 topic echo /couping/state                                               # 터미널 2
 ros2 service call /couping/start std_srvs/srv/Trigger                        # 터미널 3
 ros2 service call /couping/stop std_srvs/srv/Trigger                         # 정지할 때
@@ -136,7 +136,7 @@ YOLO 는 `~/venv/yolo`(Python 3.12)에만 있어서 `ros2 run` 대신 launch 로
 ros2 launch couping vision.launch.py                       # RealSense (USB 3 포트에 직접)
 ros2 launch couping vision.launch.py image_dir:=~/couping_ws/dataset/yolo/images/val   # 카메라 없이 사진으로
 ros2 launch couping vision.launch.py preview_rate:=2.0     # 미리보기 그림도 2Hz 로 발행
-ros2 launch couping integration.launch.py vision:=true     # 통합 실행에 포함
+ros2 launch couping_integration integration.launch.py vision:=true     # 통합 실행에 포함
 ros2 service call /couping/vision/detect std_srvs/srv/Trigger   # 인식 1회 → message 에 결과 JSON
 ```
 | 이름 | 종류 | 내용 |
@@ -169,7 +169,7 @@ ros2 service call /couping/vision/detect std_srvs/srv/Trigger   # 인식 1회 �
 6. 검증: 비전이 낸 `base_mm` 위치 위 10cm 로 TCP 를 천천히 옮겨(티치펜던트에서 좌표 입력) 컵 바로 위인지 눈으로 확인
 
 ## 주문 처리 (번호로 주문 → 두산 자동 피킹)
-신호 흐름: `ros2 run couping order` →`/couping/order`→ 오케스트레이터(대기열) →`/couping/picker/cmd: pick:tomato,salad`→ `doosan_picker`
+신호 흐름: `ros2 run couping_integration order` →`/couping/order`→ 오케스트레이터(대기열) →`/couping/picker/cmd: pick:tomato,salad`→ `doosan_picker`
 → 품목마다 관찰 자세에서 인식 → 수평으로 집기 → 핑키 k번 자리에 놓기 →`/couping/picker/status: progress:… / done / fail:…`
 
 | 번호 | 1 | 2 | 3 | 4 | 5 | 6 |
@@ -178,9 +178,9 @@ ros2 service call /couping/vision/detect std_srvs/srv/Trigger   # 인식 1회 �
 
 1. 터미널 3개: 두산 bringup, `ros2 run dsr_gripper gripper_service_a`, 그리고
    ```bash
-   ros2 launch couping integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
+   ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
    ```
-2. 주문 터미널: `ros2 run couping order` → `1, 3` 입력 (`1 3`, `13`, `1,1`(두 개)도 가능). `s` 상태, `x` 정지, `r` 재개, `q` 종료
+2. 주문 터미널: `ros2 run couping_integration order` → `1, 3` 입력 (`1 3`, `13`, `1,1`(두 개)도 가능). `s` 상태, `x` 정지, `r` 재개, `q` 종료
 3. 자세 (직접교시로 맞춘 뒤 저장, `~/couping_ws/calib/poses.json`)
    - `ros2 run couping teach_pose front` — 진열대 앞 수평 자세 (필수)
    - `ros2 run couping teach_pose place_above` / `place` / `place_2` … — 핑키 위 대기, 1번째·2번째… 품목 자리

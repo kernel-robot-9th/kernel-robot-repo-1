@@ -1,6 +1,6 @@
 """신호 송수신 현황 모니터 — 로봇을 제어하지 않고 신호 토픽만 구독해서 보여준다.
 
-  ros2 run couping monitor
+  ros2 run couping_integration monitor
 
 노트북(오케스트레이터) ↔ 두산·핑키·OMX 사이의 start/done 신호와 상태 변화를
 시간순으로 출력하고, 한 사이클이 끝나면 구간별 소요 시간을 요약한다.
@@ -40,7 +40,7 @@ class Monitor(Node):
                                      lambda m, u=unit, n=name: self.on_status(u, n, m), 10)
         self.create_subscription(String, '/couping/state', self.on_state, 10)
         print(f'{CYAN}=== Couping 신호 모니터 (ROS_DOMAIN_ID 같은지 확인) — Ctrl+C 로 종료 ==={RESET}')
-        print(f'{DIM}주문: ros2 run couping order   (신호만: ros2 service call /couping/start std_srvs/srv/Trigger){RESET}\n')
+        print(f'{DIM}주문: ros2 run couping_integration order   (신호만: ros2 service call /couping/start std_srvs/srv/Trigger){RESET}\n')
 
     def on_cmd(self, unit, name, msg):
         self.sent_at[unit] = time.monotonic()

@@ -1,13 +1,13 @@
 """Couping 1차 연동 launch.
 
-예) ros2 launch couping integration.launch.py host:=110.120.1.13 model:=e0509
-    ros2 launch couping integration.launch.py doosan:=false   # 두산 없이 핑키·OMX 만
-    ros2 launch couping integration.launch.py signal_only:=true   # 로봇 연결된 상태에서 신호만 주고받기
-    ros2 launch couping integration.launch.py vision:=true        # 진열대 비전 노드(RealSense+YOLO)도 함께
-    # 두산만 주문 처리 (bringup·그리퍼 서비스는 따로 띄운 상태), 주문은 다른 터미널에서 ros2 run couping order
-    ros2 launch couping integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
+예) ros2 launch couping_integration integration.launch.py host:=110.120.1.13 model:=e0509
+    ros2 launch couping_integration integration.launch.py doosan:=false   # 두산 없이 핑키·OMX 만
+    ros2 launch couping_integration integration.launch.py signal_only:=true   # 로봇 연결된 상태에서 신호만 주고받기
+    ros2 launch couping_integration integration.launch.py vision:=true        # 진열대 비전 노드(RealSense+YOLO)도 함께
+    # 두산만 주문 처리 (bringup·그리퍼 서비스는 따로 띄운 상태), 주문은 다른 터미널에서 ros2 run couping_integration order
+    ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
     # 로봇·카메라 없이 주문 신호 흐름만 시험
-    ros2 launch couping integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
+    ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
 핑키 쪽 bringup·navigation 은 핑키에서 따로 실행합니다.
 """
 import os
@@ -23,8 +23,10 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    config_default = os.path.join(get_package_share_directory('couping'), 'config', 'couping.yaml')
-    config = LaunchConfiguration('config')
+    config_default = os.path.join(get_package_share_directory('couping_integration'), 'config', 'integration.yaml')
+    doosan_default = os.path.join(get_package_share_directory('couping'), 'config', 'couping.yaml')
+    config = LaunchConfiguration('config')            # 오케스트레이터 · OMX
+    doosan_config = LaunchConfiguration('doosan_config')  # 두산 피킹 · 비전
     doosan = LaunchConfiguration('doosan')
     omx = LaunchConfiguration('omx')
     signal_only = ParameterValue(LaunchConfiguration('signal_only'), value_type=bool)
@@ -45,6 +47,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('config', default_value=config_default),
+        DeclareLaunchArgument('doosan_config', default_value=doosan_default),
         DeclareLaunchArgument('doosan', default_value='true', description='두산 bringup + picker 실행'),
         DeclareLaunchArgument('omx', default_value='true', description='OMX packer 실행'),
         DeclareLaunchArgument('dsr_bringup', default_value='true', description='두산 bringup 포함 (이미 따로 띄웠으면 false)'),
@@ -65,20 +68,20 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('couping'), 'launch', 'vision.launch.py')),
-            launch_arguments={'config': config}.items(),
+            launch_arguments={'config': doosan_config}.items(),
             condition=IfCondition(LaunchConfiguration('vision'))),
         Node(package='couping', executable='doosan_picker', namespace=LaunchConfiguration('robot_name'),
-             parameters=[config, {'robot_model': LaunchConfiguration('model'),
+             parameters=[doosan_config, {'robot_model': LaunchConfiguration('model'),
                                   'signal_only': signal_only, 'fake': fake}],
              output='screen', condition=IfCondition(doosan)),
-        Node(package='couping', executable='omx_packer',
+        Node(package='couping_integration', executable='omx_packer',
              parameters=[config, {'signal_only': signal_only}],
              output='screen', condition=IfCondition(omx)),
-        Node(package='couping', executable='web_ui', output='screen',
+        Node(package='couping_integration', executable='web_ui', output='screen',
              parameters=[{'port': ParameterValue(LaunchConfiguration('web_port'), value_type=int)}],
              condition=IfCondition(LaunchConfiguration('web'))),
         # 실행하지 않은 로봇의 단계는 오케스트레이터도 건너뜀
-        Node(package='couping', executable='orchestrator', output='screen',
+        Node(package='couping_integration', executable='orchestrator', output='screen',
              parameters=[config, {'signal_only': signal_only,
                                   'enable_picker': ParameterValue(doosan, value_type=bool),
                                   'enable_pinky': ParameterValue(LaunchConfiguration('pinky'), value_type=bool),

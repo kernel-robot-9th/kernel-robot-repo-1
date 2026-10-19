@@ -4,7 +4,7 @@
 대기열에 넣고 하나씩
   PICKING(두산에 pick:tomato,salad) → MOVING_TO_PACK → PACKING → RETURNING → DONE
 순서로 진행한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
-주문 입력 터미널: ros2 run couping order
+주문 입력 터미널: ros2 run couping_integration order
 /couping/start (std_srvs/Trigger) 는 품목 없는 주문(두산에 start)을 넣는다 (신호 확인용).
 /couping/stop 을 받거나 단계가 실패·시간 초과되면 핑키 주행을 취소하고 ERROR 로 멈추며,
 남은 주문은 /couping/resume 을 받을 때까지 대기열에서 기다린다.
@@ -82,7 +82,7 @@ class Orchestrator(Node):
         self.create_service(Trigger, '/couping/resume', self.on_resume)
         self.worker = threading.Thread(target=self.order_loop, daemon=True)
         self.worker.start()
-        self.get_logger().info('orchestrator 준비 완료. 주문: ros2 run couping order')
+        self.get_logger().info('orchestrator 준비 완료. 주문: ros2 run couping_integration order')
 
     # ---------- 상태 ----------
     def set_state(self, state):

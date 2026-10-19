@@ -1,7 +1,7 @@
 """고객·관리자 웹 화면 서버 (ROS 노드 + 웹서버, 추가 설치 없음).
 
-  ros2 run couping web_ui                 # http://<노트북 IP>:8080/  (고객)  /admin (관리자)
-  ros2 run couping web_ui --ros-args -p port:=8090
+  ros2 run couping_integration web_ui                 # http://<노트북 IP>:8080/  (고객)  /admin (관리자)
+  ros2 run couping_integration web_ui --ros-args -p port:=8090
 
 고객 화면: 상품 고르기 → 주문(/couping/order 발행) → 배송 현황(주문 확인·상품 담는 중·포장 시작·배송 시작·배송 완료)
 관리자 화면: 들어온 주문, 품목별 상태, 두산 진행, 실시간 카메라, 로봇 상태, 신호 로그, 정지·재개
@@ -380,7 +380,7 @@ def make_handler(node, web_dir):
 def main(args=None):
     rclpy.init(args=args)
     node = WebUI()
-    web_dir = os.path.join(get_package_share_directory('couping'), 'web')
+    web_dir = os.path.join(get_package_share_directory('couping_integration'), 'web')
     port = node.get_parameter('port').value
     server = ThreadingHTTPServer(('0.0.0.0', port), make_handler(node, web_dir))
     server.daemon_threads = True
