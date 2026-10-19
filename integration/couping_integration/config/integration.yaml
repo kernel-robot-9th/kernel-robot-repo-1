@@ -22,7 +22,7 @@
     enable_pinky: true
     enable_packer: true
     return_home: true
-    picker_timeout: 120.0       # 품목 하나당 (주문 품목 수만큼 곱함)
+    picker_timeout: 240.0       # 품목 하나당 (주문 품목 수만큼 곱함). 카메라 확인 후 재시도(최대 3번, 한 번 약 65초) 포함
     nav_timeout: 120.0
     packer_timeout: 120.0       # episode_time(60) + 카메라·모델 로딩 여유
     manual_transfer: false      # 핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면 '박스 옮김 완료'
