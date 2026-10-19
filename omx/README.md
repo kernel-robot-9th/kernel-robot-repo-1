@@ -206,3 +206,7 @@ done / fail 신호: 현재 이 스크립트는 ROS 토픽으로 `done`/`fail`을
 - 에피소드 시간(`EPISODE_TIME`)이 지나거나 키보드 오른쪽 방향키를 누르면 에피소드가 끝나고 프로세스가 종료됩니다.
 - 오류가 나면 에러 메시지와 함께 비정상 종료합니다. 종료 코드로 구분하는 방식은 아직 검증하지 않았습니다.
 - 학습된 정책은 작업 성공 여부를 스스로 판단하지 않습니다. 토픽 연동이 필요하면 팀에서 정한 토픽 이름, 메시지 타입, 성공 판단 기준에 맞춰 발행하는 래퍼 노드를 추가해야 합니다.
+
+### 5-6. 캘리브레이션 파일
+
+`omx/calibration/`의 `bi_omx_follower_left.json`, `bi_omx_follower_right.json`은 학습 때 사용한 값입니다(공장 기본값: homing_offset 0, range 0~4095). 실행하는 PC의 `~/.cache/huggingface/lerobot/calibration/robots/omx_follower/`에 복사하세요: `mkdir -p ~/.cache/huggingface/lerobot/calibration/robots/omx_follower && cp omx/calibration/*.json ~/.cache/huggingface/lerobot/calibration/robots/omx_follower/`. 없으면 처음 실행할 때 같은 기본값으로 자동 생성됩니다.
