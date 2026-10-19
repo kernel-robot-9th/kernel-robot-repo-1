@@ -23,7 +23,7 @@ from couping import catalog
 GREEN, RED, YELLOW, CYAN, DIM, BOLD, RESET = ('\033[32m', '\033[31m', '\033[33m', '\033[36m',
                                               '\033[2m', '\033[1m', '\033[0m')
 PROMPT = '주문> '
-STAGE = {'started': '처리 시작', 'PICKING': '두산 피킹', 'MOVING_TO_PACK': '핑키 포장대로 이동',
+STAGE = {'started': '처리 시작', 'MOVING_TO_PICK': '핑키 피킹 위치로 이동', 'PICKING': '두산 피킹', 'MOVING_TO_PACK': '핑키 포장대로 이동',
          'PACKING': 'OMX 포장', 'RETURNING': '핑키 복귀'}
 
 

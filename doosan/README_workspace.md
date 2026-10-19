@@ -8,7 +8,7 @@
  ├─ USB /dev/omx_follower ── OMX (LeRobot ACT 정책)
  └─ Wi-Fi ───────────────── 핑키 (RPi, ROS 2 Jazzy, Nav2)
 
-/couping/start → PICKING(두산) → MOVING_TO_PACK(핑키) → PACKING(OMX) → RETURNING(핑키) → DONE
+/couping/start → MOVING_TO_PICK(핑키) → PICKING(두산) → MOVING_TO_PACK(핑키) → PACKING(OMX) → RETURNING(핑키) → DONE
 ```
 
 | 노드 | 역할 | 토픽/서비스 |
@@ -58,7 +58,7 @@ sudo nmcli con add type ethernet ifname enp130s0 con-name doosan ipv4.method man
 
 ## 2단계. 현장 값 채우기 (`config/couping.yaml`의 TODO)
 - 두산: 모델명, 그리퍼 디지털 출력 번호, 관절 포즈 5개(home, pick_approach, pick, place_approach, place). 티치펜던트에서 읽은 값을 넣습니다.
-- 핑키: `pack_pose`(OMX 앞)와 `home_pose`(두산 앞)를 맵 좌표 `[x, y, yaw]`로 넣습니다.
+- 핑키: `pick_pose`(피킹 지정 위치), `pack_pose`(OMX 앞), `home_pose`(핑키 대기 위치)를 맵 좌표 `[x, y, yaw]`로 넣습니다.
 - OMX: 박스 덮개 닫기 정책 경로를 넣습니다. 정책을 학습하기 전에는 기존 `jun_pumpkin`으로 흐름만 시험합니다.
 
 `--symlink-install`로 빌드했기 때문에 yaml을 고친 뒤 다시 빌드하지 않아도 됩니다.
@@ -86,7 +86,7 @@ sudo nmcli con add type ethernet ifname enp130s0 con-name doosan ipv4.method man
    ```bash
    ros2 service call /couping/start std_srvs/srv/Trigger
    ```
-3. 성공하면 `PICKING → MOVING_TO_PACK → PACKING → DONE` 순서로 진행됩니다. 두산 관절 각도, 핑키 수신 로그, OMX 모터 위치가 각 터미널에 찍힙니다.
+3. 성공하면 `MOVING_TO_PICK → PICKING → MOVING_TO_PACK → PACKING → DONE` 순서로 진행됩니다. 두산 관절 각도, 핑키 수신 로그, OMX 모터 위치가 각 터미널에 찍힙니다.
 
 ## 3단계. 로봇별 단위 테스트
 
@@ -109,7 +109,7 @@ ros2 launch pinky_navigation bringup_launch.xml map:=<맵 이름>
 ros2 topic list | grep -E "odom|navigate"
 ros2 launch pinky_navigation nav2_view.launch.xml
 ```
-RViz에서 2D Pose Estimate로 초기 위치를 잡고 2D Goal Pose로 주행을 확인합니다. 이때 화면에 표시되는 좌표가 `pack_pose`와 `home_pose`의 값이 됩니다.
+RViz에서 2D Pose Estimate로 초기 위치를 잡고 2D Goal Pose로 주행을 확인합니다. 이때 화면에 표시되는 좌표가 `pick_pose`, `pack_pose`, `home_pose`의 값이 됩니다.
 노트북에서 핑키 토픽이 안 보이면 공용 Wi-Fi가 멀티캐스트를 막고 있는 경우가 많습니다. 핑키 AP(192.168.4.1)에 직접 연결하거나, 양쪽에 `export ROS_STATIC_PEERS=<상대 IP>`를 설정하세요.
 
 **OMX** (TP-03, TP-06). 핑키를 `pack_pose`에 세워 둔 상태에서 실행합니다.

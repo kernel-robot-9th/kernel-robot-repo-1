@@ -2,8 +2,9 @@
 
 주문은 /couping/order (std_msgs/String, JSON {"id": "001", "items": ["tomato", "salad"]}) 로 받아
 대기열에 넣고 하나씩
-  PICKING(두산에 pick:tomato,salad) → MOVING_TO_PACK → PACKING → RETURNING → DONE
-순서로 진행한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
+  MOVING_TO_PICK(핑키가 pick_pose 로) → PICKING(두산에 pick:tomato,salad) → MOVING_TO_PACK
+  → PACKING → RETURNING(핑키가 home_pose 로) → DONE
+순서로 진행한다. 두산과 핑키는 물리적으로 떨어져 있어, 핑키가 pick_pose 에 도착한 뒤 두산 피킹을 시작한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
 주문 입력 터미널: ros2 run couping_integration order
 /couping/start (std_srvs/Trigger) 는 품목 없는 주문(두산에 start)을 넣는다 (신호 확인용).
 /couping/stop 을 받거나 단계가 실패·시간 초과되면 핑키 주행을 취소하고 ERROR 로 멈추며,
@@ -50,7 +51,8 @@ class Orchestrator(Node):
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
                               ('nav_action', '/navigate_to_pose'), ('map_frame', 'map'),
-                              ('pack_pose', [0.0, 0.0, 0.0]), ('home_pose', [0.0, 0.0, 0.0])]:
+                              ('pick_pose', [0.0, 0.0, 0.0]), ('pack_pose', [0.0, 0.0, 0.0]),
+                              ('home_pose', [0.0, 0.0, 0.0])]:
             self.declare_parameter(name, default)
 
         self.state = 'IDLE'
@@ -184,6 +186,13 @@ class Orchestrator(Node):
         items = order['items']
         self.publish_order(order, 'started')
         try:
+            if p('enable_pinky'):
+                self.set_state('MOVING_TO_PICK')
+                self.publish_order(order, 'MOVING_TO_PICK')
+                if p('signal_only'):
+                    self.run_unit('pinky', p('nav_timeout'))
+                else:
+                    self.navigate(p('pick_pose'), p('nav_timeout'))
             if p('enable_picker'):
                 self.set_state('PICKING')
                 self.publish_order(order, 'PICKING')

@@ -27,5 +27,6 @@
     nav_action: /navigate_to_pose
     map_frame: map
     # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
+    pick_pose: [0.0, 0.0, 0.0]  # 주문이 들어오면 먼저 가는 피킹 지정 위치. 도착하면 두산 피킹 시작
     pack_pose: [0.0, 0.0, 0.0]  # OMX 앞 정차 위치
-    home_pose: [0.0, 0.0, 0.0]  # 두산 앞 적재 위치
+    home_pose: [0.0, 0.0, 0.0]  # 핑키 대기 위치 (주문 끝나면 복귀)
