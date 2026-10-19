@@ -70,7 +70,10 @@ class OrderTerminal(Node):
             self.say(f"{GREEN}{BOLD}{head} 완료{RESET} ({d['detail']}, 남은 주문 {d['queue']}건)")
         elif st == 'ERROR':
             self.say(f"{RED}{BOLD}{head} 실패{RESET}{RED} - {d['detail']}{RESET}")
-            self.say(f"{RED}대기열 일시정지 (남은 주문 {d['queue']}건). 로봇 상태 확인 후 r 입력하면 재개{RESET}")
+            if d.get('paused'):
+                self.say(f"{RED}대기열 일시정지 (남은 주문 {d['queue']}건). 로봇 상태 확인 후 r 입력하면 재개{RESET}")
+            else:
+                self.say(f"{YELLOW}실패한 주문은 넘기고 다음 주문 진행 (남은 주문 {d['queue']}건){RESET}")
         else:
             self.say(f'{CYAN}{head} → {STAGE.get(st, st)}{RESET}')
 

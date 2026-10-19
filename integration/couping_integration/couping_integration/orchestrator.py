@@ -46,6 +46,7 @@ class Orchestrator(Node):
         for name, default in [('signal_only', False), ('enable_picker', True), ('enable_pinky', True),
                               ('enable_packer', True), ('return_home', True),
                               ('manual_transfer', False), ('transfer_timeout', 600.0),
+                              ('pause_on_error', False),  # false: 실패한 주문은 넘기고 다음 주문 진행
                               ('picker_timeout', 120.0),  # 품목 하나당
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
@@ -217,7 +218,9 @@ class Orchestrator(Node):
             self.get_logger().info(f"주문 {order['id']} 완료: {time.monotonic() - t0:.1f}s")
         except StageError as e:
             self.cancel_nav()
-            self.paused = True
+            # 정지 버튼(stopped)이면 항상 멈추고, 그 외 실패는 설정에 따라 넘기고 다음 주문 진행
+            if p('pause_on_error') or str(e) == 'stopped':
+                self.paused = True
             stage = self.state
             self.set_state(f'ERROR:{stage}:{e}')
             self.publish_order(order, 'ERROR', f'{stage}: {e}')
