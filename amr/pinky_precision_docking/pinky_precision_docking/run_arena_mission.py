@@ -25,6 +25,13 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 
+from pinky_precision_docking.sound_effects import (
+    play_docking_complete,
+    start_reverse_melody,
+    stop_reverse_melody,
+    get_sound_manager,
+)
+
 
 # Arena Waypoints [x(m), y(m), yaw(rad)]
 WAYPOINTS = {
@@ -42,7 +49,14 @@ MARKER_IDS = {
 
 
 class ArenaMissionController:
-    def __init__(self):
+    def __init__(self, enable_sound: bool = True, piezo_pin: int = None):
+        self.enable_sound = enable_sound
+        if self.enable_sound:
+            self.sound_mgr = get_sound_manager()
+            if piezo_pin is not None:
+                self.sound_mgr.piezo_pin = piezo_pin
+                self.sound_mgr._init_gpio_piezo()
+
         self.nav = BasicNavigator()
         self.docking_completed = False
 
@@ -126,27 +140,35 @@ class ArenaMissionController:
                 return False
 
         print(f"[Docking] Precision Docking completed successfully at '{station_name}' in {time.time() - start_t:.1f}s!")
+        if self.enable_sound:
+            play_docking_complete(blocking=False)
         return True
 
     def undock_backup(self, distance_m: float = 0.20, speed: float = -0.04):
         """Safely back up straight to clear wall/shelf before handing control back to Nav2."""
         duration = abs(distance_m / speed)
         print(f"[Undock] Backing up {distance_m*100:.0f}cm straight ({speed:.2f}m/s for {duration:.1f}s) to clear obstacle...")
-        msg = Twist()
-        msg.linear.x = float(speed)
-        t_end = time.time() + duration
-        while time.time() < t_end:
-            self.cmd_vel_pub.publish(msg)
-            time.sleep(0.05)
-        # Stop
-        self.cmd_vel_pub.publish(Twist())
-        time.sleep(0.5)
+        if self.enable_sound:
+            start_reverse_melody()
+        try:
+            msg = Twist()
+            msg.linear.x = float(speed)
+            t_end = time.time() + duration
+            while time.time() < t_end:
+                self.cmd_vel_pub.publish(msg)
+                time.sleep(0.05)
+            # Stop
+            self.cmd_vel_pub.publish(Twist())
+            time.sleep(0.5)
+        finally:
+            if self.enable_sound:
+                stop_reverse_melody()
         print("[Undock] Cleared obstacle successfully.")
 
 
-def run_full_mission():
+def run_full_mission(enable_sound: bool = True, piezo_pin: int = None):
     rclpy.init()
-    ctrl = ArenaMissionController()
+    ctrl = ArenaMissionController(enable_sound=enable_sound, piezo_pin=piezo_pin)
 
     print("\n" + "="*70)
     print("      🚀 STARTING PINKY PRO ARENA E2E MULTI-STATION MISSION 🚀")
@@ -236,9 +258,11 @@ def run_full_mission():
 def main():
     parser = argparse.ArgumentParser(description="Pinky Pro Arena Full E2E Mission")
     parser.add_argument('--step', default='all', help="Specific step to run: all, 1, 2, 3, 4, 5, 6, 7")
+    parser.add_argument('--no-sound', action='store_true', help="Disable sound effects")
+    parser.add_argument('--buzzer-pin', type=int, default=None, help="Raspberry Pi GPIO pin for piezo buzzer")
     args = parser.parse_args()
 
-    run_full_mission()
+    run_full_mission(enable_sound=not args.no_sound, piezo_pin=args.buzzer_pin)
 
 
 if __name__ == '__main__':

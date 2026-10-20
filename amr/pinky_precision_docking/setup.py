@@ -34,6 +34,7 @@ setup(
             'run_docking_scenarios = pinky_precision_docking.run_docking_scenarios:main',
             'run_corridor_scenarios = pinky_precision_docking.run_corridor_scenarios:main',
             'run_arena_mission = pinky_precision_docking.run_arena_mission:main',
+            'sound_effects = pinky_precision_docking.sound_effects:main',
         ],
     },
 )
