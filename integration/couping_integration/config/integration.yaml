@@ -40,7 +40,7 @@
     food:                       # 식품
       items: [tomato, carrot, salad]
       pose: [1.13, 1.01, -1.57] # Gazebo 가운데 아래 진열대(shelf_b) 옆
-    pack_pose: [1.17, 0.25, 0.0]  # OMX 앞 정차 위치. 실제 핑키로 주행해 보고 앞 30cm·왼쪽 5cm 옮긴 자리 (LiDAR 로 확인)
+    pack_pose: [0.97, 0.23, 0.0]  # OMX 앞 정차 위치 (두 OMX 사이 마커 앞). 현장에서 이 자리가 맞다고 확인. 마지막 정렬은 도킹으로
     home_pose: [0.09, 0.26, 0.0]  # 핑키 대기 위치 (바닥 표시 자리). 실제 핑키를 놓고 LiDAR 를 맵 벽에 맞춰 구한 값. 주문 끝나면 복귀
                                   # nav2_params_arena.yaml 의 amcl initial_pose 와 같게 유지
 
