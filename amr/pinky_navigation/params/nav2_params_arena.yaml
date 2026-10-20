@@ -38,11 +38,11 @@ amcl:
     z_short: 0.05
     scan_topic: scan
     set_initial_pose: true
-    # 핑키 대기 위치(home). 실제 핑키를 놓고 2D Pose Estimate 로 딴 값 (integration.yaml 의 home_pose 와 같게).
+    # 핑키 대기 위치(home). 실제 핑키를 바닥 표시 자리에 놓고 LiDAR 를 맵 벽에 맞춰 구한 값 (integration.yaml 의 home_pose 와 같게).
     # Jazzy AMCL 은 x / y / z / yaw 를 따로 읽는다 ([x, y, yaw] 한 줄 형식은 무시되고 0,0,0 이 됨)
     initial_pose:
-      x: 0.15
-      y: 0.24
+      x: 0.09
+      y: 0.26
       z: 0.0
       yaw: 0.0
     first_map_only: true          # 맵을 다시 받아도 위치를 초기화하지 않음
