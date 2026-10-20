@@ -267,9 +267,12 @@ class PrecisionDockingNode(Node):
     def _handle_start_trigger(self, req: Trigger.Request, resp: Trigger.Response) -> Trigger.Response:
         now = self._get_time_sec()
         self.docking_logged = False
+        self.estimator.reset()
+        self.last_marker_obs = None
+        self.last_wall_obs = None
         self.controller.start(now)
         resp.success = True
-        resp.message = f'Docking started in {self.controller.phase.value}'
+        resp.message = f'Docking started in {self.controller.phase.value} (Target ID: {self.target_marker_id})'
         self.get_logger().info(resp.message)
         return resp
 
