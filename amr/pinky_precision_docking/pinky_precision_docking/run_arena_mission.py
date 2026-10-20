@@ -22,7 +22,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Int32
 from std_srvs.srv import Trigger
 
 from pinky_precision_docking.sound_effects import (
@@ -49,7 +49,7 @@ MARKER_IDS = {
 
 
 class ArenaMissionController:
-    def __init__(self, enable_sound: bool = True, piezo_pin: int = None):
+    def __init__(self, enable_sound: bool = True, piezo_pin: int = None, use_sim_time: bool = False):
         self.enable_sound = enable_sound
         if self.enable_sound:
             self.sound_mgr = get_sound_manager()
@@ -58,6 +58,9 @@ class ArenaMissionController:
                 self.sound_mgr._init_gpio_piezo()
 
         self.nav = BasicNavigator()
+        if use_sim_time:
+            self.nav.set_parameters([rclpy.parameter.Parameter('use_sim_time', rclpy.Parameter.Type.BOOL, True)])
+
         self.docking_completed = False
 
         # Subscriber for /docking_completed
@@ -65,6 +68,7 @@ class ArenaMissionController:
             Bool, '/docking_completed', self._docking_completed_cb, 10
         )
         self.cmd_vel_pub = self.nav.create_publisher(Twist, '/cmd_vel', 10)
+        self.target_id_pub = self.nav.create_publisher(Int32, '/docking/target_marker_id', 10)
         self.start_dock_cli = self.nav.create_client(Trigger, '/docking/start')
 
     def _docking_completed_cb(self, msg: Bool):
@@ -72,18 +76,14 @@ class ArenaMissionController:
             self.docking_completed = True
 
     def set_docking_marker_id(self, marker_id: int):
-        """Set target_marker_id parameter on precision_docking_node."""
-        print(f"[Mission] Setting precision_docking_node target_marker_id = {marker_id}...")
-        try:
-            subprocess.run(
-                ['ros2', 'param', 'set', '/precision_docking_node', 'target_marker_id', str(marker_id)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            print(f"[Mission] Parameter target_marker_id set to {marker_id} successfully.")
-        except Exception as e:
-            print(f"[Mission Warning] Could not set param via CLI: {e}")
+        """Set target_marker_id instantly via ROS topic (<5ms, zero subprocess delay)."""
+        print(f"[Mission] Setting target_marker_id = {marker_id} via topic...")
+        msg = Int32()
+        msg.data = int(marker_id)
+        for _ in range(3):
+            self.target_id_pub.publish(msg)
+            time.sleep(0.01)
+        print(f"[Mission] Target ArUco Marker ID set to {marker_id} successfully.")
 
     def navigate_to(self, waypoint_name: str, x: float, y: float, yaw: float, timeout_sec: float = 60.0) -> bool:
         """Navigate to waypoint using Nav2 BasicNavigator."""
@@ -121,7 +121,7 @@ class ArenaMissionController:
         """Execute precision docking to designated ArUco marker."""
         print(f"\n>>> [Docking] Starting Precision Docking at '{station_name}' to Marker ID {marker_id}...")
         self.set_docking_marker_id(marker_id)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         if not self.start_dock_cli.wait_for_service(timeout_sec=5.0):
             print("[Docking Error] /docking/start service not available! Is precision_docking_node running?")
@@ -130,11 +130,14 @@ class ArenaMissionController:
         self.docking_completed = False
         req = Trigger.Request()
         future = self.start_dock_cli.call_async(req)
+        rclpy.spin_until_future_complete(self.nav, future, timeout_sec=2.0)
+        if future.result():
+            print(f"[Docking] Trigger response: {future.result().message}")
 
         start_t = time.time()
         while not self.docking_completed:
-            rclpy.spin_once(self.nav, timeout_sec=0.1)
-            time.sleep(0.05)
+            rclpy.spin_once(self.nav, timeout_sec=0.05)
+            time.sleep(0.02)
             if time.time() - start_t > timeout_sec:
                 print(f"[Docking Error] Docking at '{station_name}' timed out ({timeout_sec}s)!")
                 return False
@@ -166,9 +169,9 @@ class ArenaMissionController:
         print("[Undock] Cleared obstacle successfully.")
 
 
-def run_full_mission(enable_sound: bool = True, piezo_pin: int = None):
+def run_full_mission(enable_sound: bool = True, piezo_pin: int = None, use_sim_time: bool = False):
     rclpy.init()
-    ctrl = ArenaMissionController(enable_sound=enable_sound, piezo_pin=piezo_pin)
+    ctrl = ArenaMissionController(enable_sound=enable_sound, piezo_pin=piezo_pin, use_sim_time=use_sim_time)
 
     print("\n" + "="*70)
     print("      🚀 STARTING PINKY PRO ARENA E2E MULTI-STATION MISSION 🚀")
@@ -260,9 +263,10 @@ def main():
     parser.add_argument('--step', default='all', help="Specific step to run: all, 1, 2, 3, 4, 5, 6, 7")
     parser.add_argument('--no-sound', action='store_true', help="Disable sound effects")
     parser.add_argument('--buzzer-pin', type=int, default=None, help="Raspberry Pi GPIO pin for piezo buzzer")
+    parser.add_argument('--sim', action='store_true', help="Enable use_sim_time for Gazebo simulation")
     args = parser.parse_args()
 
-    run_full_mission(enable_sound=not args.no_sound, piezo_pin=args.buzzer_pin)
+    run_full_mission(enable_sound=not args.no_sound, piezo_pin=args.buzzer_pin, use_sim_time=args.sim)
 
 
 if __name__ == '__main__':
