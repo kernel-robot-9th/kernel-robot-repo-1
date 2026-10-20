@@ -32,6 +32,7 @@ setup(
             'fake_pinky = couping_integration.fake_pinky:main',
             'fake_twin = couping_integration.fake_twin:main',
             'sim_camera = couping_integration.sim_camera:main',
+            'goto = couping_integration.goto:main',
         ],
     },
 )
