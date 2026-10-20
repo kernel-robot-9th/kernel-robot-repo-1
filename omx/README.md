@@ -108,7 +108,6 @@ omx/models/act_100000/pretrained_model/
 | `LEFT_CAM`, `RIGHT_CAM`, `HEAD_CAM` | 카메라 장치 경로 |
 | `EPISODE_TIME` | 로봇이 한 번에 움직이는 시간(초) |
 | `TASK` | 작업 설명 (학습 때 쓴 문장과 같게) |
-| `POLICY_DEVICE` | 추론 장치. 기본 `cuda`, NVIDIA GPU 가 없으면 `cpu` |
 
 스크립트의 `source ~/venv/il/bin/activate` 줄도 가상환경 경로에 맞게 고칩니다.
 
@@ -141,7 +140,7 @@ bash omx/scripts/run_act.sh
 
 - 실행 PC: `노트북`
 - OMX leader 2대, follower 2대, 카메라 3대가 이 PC에 USB로 직접 연결되어야 합니다.
-- 추론은 기본으로 `--policy.device=cuda`(NVIDIA GPU)로 실행합니다. GPU가 없으면 `POLICY_DEVICE=cpu`로 실행할 수 있습니다. i5-1135G7 노트북에서 재 보니 100걸음(약 3.3초)마다 행동 묶음을 새로 계산하는 데 약 0.6초가 걸려, 그동안 팔이 잠깐 멈췄다가 이어서 움직입니다(나머지 걸음은 약 9ms). RTX 5080 환경에서는 PyTorch 2.10.0+cu128로 동작을 확인했습니다. 최신 GPU는 CUDA 12.8 이상 빌드의 PyTorch가 필요할 수 있습니다.
+- 추론은 `--policy.device=cuda`로 실행하므로 NVIDIA GPU가 필요합니다. RTX 5080 환경에서는 PyTorch 2.10.0+cu128로 동작을 확인했습니다. 최신 GPU는 CUDA 12.8 이상 빌드의 PyTorch가 필요할 수 있습니다.
 
 ### 5-2. ROS 버전, 필요한 apt 패키지
 

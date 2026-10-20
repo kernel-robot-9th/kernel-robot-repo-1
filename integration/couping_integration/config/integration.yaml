@@ -4,14 +4,14 @@
   ros__parameters:
     # 양팔 OMX (OMX 팀 omx/scripts/run_act.sh). 비운 값은 run_act.sh 기본값을 씀
     run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
-    policy_path: ~/omx_models/act_120000/pretrained_model   # omx/models/README.md 의 릴리스 모델(120000 스텝)을 풀어 둔 곳
-    # 카메라 번호(/dev/videoN)는 RealSense 등을 꽂으면 바뀌므로 USB 포트 경로로 지정. 카메라를 같은 포트에 꽂아 둘 것
-    # (2026-10-20 노트북에서 손으로 가려 확인: 왼쪽 손목=video12, 오른쪽 손목=video4, head=video2 당시 번호)
-    left_cam: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-video-index0    # 왼쪽 손목 Innomaker
-    right_cam: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:2.4:1.0-video-index0   # 오른쪽 손목 Innomaker
-    head_cam: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:2.2:1.0-video-index0    # head SNAP U2 (위에서 내려다봄)
+    policy_path: ''             # 예: ~/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model
+    # 카메라. 비우면 run_act.sh 기본값(/dev/video4,6,8). 번호는 RealSense 등을 꽂으면 바뀌므로
+    # USB 포트 경로(ls -l /dev/v4l/by-path)로 넣는 것을 권장. 어느 카메라인지는 손으로 렌즈를 가려 확인
+    # 예: left_cam: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-video-index0
+    left_cam: ''
+    right_cam: ''
+    head_cam: ''
     task: Packaging the box     # 학습 때 문장과 같게
-    policy_device: cpu          # 추론 장치. GPU(NVIDIA) 노트북이면 cuda, 없으면 cpu (100걸음마다 약 0.6초 멈춤)
     episode_time: 60
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
     fake_seconds: 5.0           # fake:=true 일 때 OMX 대신 기다리는 시간
