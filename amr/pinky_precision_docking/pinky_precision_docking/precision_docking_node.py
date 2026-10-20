@@ -1,28 +1,21 @@
 #!/usr/bin/env python3
 """
-Pinky Pro Precision Auto-Docking Node (v4.0 Master Edition).
+Pinky Pro Precision Auto-Docking Node.
 
-Architecture & Features:
-1. Phase 1: Nav2 Isolation & FSM Lifecycle
-   - IDLE state prevents command collision with Nav2 during global navigation.
-   - ROS 2 Trigger services: /docking/start, /docking/cancel.
-
-2. Phase 2: Curved S-Curve (Stanley Controller)
-   - Replaces abrupt orthogonal stops with smooth continuous S-curve convergence.
-   - Simultaneously drives 1cm lateral error and 3-deg wall angle error to zero during forward motion.
-
-3. Phase 3: 2D LiDAR (/scan) Wall Alignment
-   - Real-time least-squares wall line fitting within +/-25 deg front cone.
-   - Enforces <0.5 deg perpendicular alignment independent of camera perspective noise.
-
-4. Phase 4: Ultra-Close Sensor Fusion Docking (PRECISION_STOP)
-   - Active sensor feedback (Ultrasonic us_sensor/range + 2D LiDAR front beam) inside <14cm camera blind zone.
-   - Soft exponential deceleration to exact 3cm stop (tolerance 5mm) with 2cm emergency brake.
-   - Automatic fallback to odometry blind push if ultrasonic stream is absent.
+Architecture:
+  - Branch A (Camera): ArUco (DICT_5X5, 6cm) + IPPE_SQUARE + LiDAR-guided ambiguity resolution.
+  - Branch B (LiDAR): Front 2D LaserScan + Camera-guided RANSAC & TLS line fitting.
+  - Fusion Estimator: World-fixed static docking anchor in odom frame with Kalman filtering.
+  - Staged Controller:
+      1. Pre-docking Intercept (FOV-preserving deviated pursuit to centerline)
+      2. Closed-loop Verification & Fine Adjustment (with recovery retreat guard)
+      3. Terminal Straight Approach (parallel 11-shape entry to 10cm, <1cm dist, <1.5cm lat, <2 deg yaw)
 """
 
-from enum import Enum
+import csv
+from datetime import datetime
 import math
+import os
 import signal
 import sys
 import time
@@ -34,92 +27,95 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import numpy as np
 import rclpy
-from rcl_interfaces.msg import ParameterDescriptor, ParameterType, SetParametersResult
+from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from rclpy.qos import QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
-from sensor_msgs.msg import CameraInfo, CompressedImage, Image, LaserScan, Range
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image, LaserScan
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 
-
-class DockingState(Enum):
-    IDLE = "IDLE"
-    SEARCH = "SEARCH"
-    ALIGN_BEARING = "ALIGN_BEARING"
-    T_TURN_PARALLEL = "T_TURN_PARALLEL"
-    T_DRIVE_LATERAL = "T_DRIVE_LATERAL"
-    T_RETURN_FACING = "T_RETURN_FACING"
-    FINE_ALIGN = "FINE_ALIGN"
-    APPROACH_NORMAL = "APPROACH_NORMAL"
-    ALIGN_WALL = "ALIGN_WALL"
-    FINAL_APPROACH = "FINAL_APPROACH"
-    PRECISION_STOP = "PRECISION_STOP"
-    BLIND_PUSH = "BLIND_PUSH"
-    DOCKED = "DOCKED"
-    LOST = "LOST"
+from .controller import ControllerParams, DockingController, Phase
+from .estimator import DockingEstimate, DockingEstimator, EstimatorParams
+from .geometry import Pose2D, wrap_angle
+from .marker_detector import ArucoMarkerDetector, CameraExtrinsics, MarkerObservation
+from .wall_fitting import LidarExtrinsics, WallFitParams, WallFitter, WallObservation
 
 
 class PrecisionDockingNode(Node):
+    """High-precision Camera-LiDAR fusion auto-docking node for differential drive robots."""
 
     def __init__(self):
         super().__init__('precision_docking_node')
-
-        self._declare_and_get_parameters()
         self.bridge = CvBridge()
 
-        # FSM State & lifecycle
-        self.state = DockingState.IDLE if self.start_in_idle else DockingState.SEARCH
-        self.last_state = None
-        self.last_detection_time = 0.0
-        self.consecutive_detect_count = 0
-        self.last_known_bearing: Optional[float] = None
-        self.last_turn_dir: float = 1.0
+        self._declare_and_get_parameters()
 
-        # Filtered marker pose [x, y, z, wall_angle, signed_lat, dist_along_normal]
-        self.filtered_pose: Optional[List[float]] = None
-        self.raw_pose: Optional[Tuple[float, ...]] = None
-        self.last_R: Optional[np.ndarray] = None
-        self.last_normal_u: Optional[Tuple[float, float]] = None
-        self.last_closest_pt: Optional[Tuple[float, float]] = None
+        # Instantiate modular components
+        self.cam_ext = CameraExtrinsics(
+            x=self.camera_z_offset,   # forward lever arm from wheel axle (m)
+            y=self.camera_x_offset,
+            z=0.0654,
+            pitch=math.radians(self.cam_tilt_deg)
+        )
+        self.detector = ArucoMarkerDetector(
+            dictionary=self.aruco_dict_name,
+            marker_size=self.marker_size,
+            extrinsics=self.cam_ext
+        )
 
-        # Odometry tracking
-        self.current_odom_x = 0.0
-        self.current_odom_y = 0.0
-        self.current_odom_yaw = 0.0
-        self.odom_received = False
-        self.turn_start_yaw = 0.0
-        self.t_turn_angle_1 = 0.0
-        self.t_turn_angle_2 = 0.0
-        self.lat_start_x = 0.0
-        self.lat_start_y = 0.0
-        self.lat_target_dist = 0.0
-        self.t_lateral_offset = 0.0
-        self.fine_align_start_time = 0.0
-        self.blind_start_x = 0.0
-        self.blind_start_y = 0.0
-        self.blind_target_dist = 0.0
+        self.lidar_ext = LidarExtrinsics(
+            x=-0.017,  # URDF default rplidar_mount
+            y=0.0,
+            yaw=math.pi
+        )
+        self.wall_fitter = WallFitter(
+            params=WallFitParams(
+                fov_half_deg=self.lidar_roi_angle_deg,
+                min_range=self.lidar_min_range,
+                max_range=self.lidar_max_range
+            ),
+            extrinsics=self.lidar_ext
+        )
 
-        # Sensor Fusion: 2D LiDAR Wall Fitting (Phase 3)
-        self.lidar_wall_yaw: Optional[float] = None
-        self.lidar_front_dist: Optional[float] = None
-        self.lidar_last_time: float = 0.0
-        self.lidar_fit_r2: float = 0.0
+        self.estimator = DockingEstimator(
+            params=EstimatorParams(),
+            cam_xy=(self.cam_ext.x, self.cam_ext.y),
+            ref_xy=(self.cam_ext.x, self.cam_ext.y)
+        )
 
-        # Sensor Fusion: Ultrasonic Range (Phase 4)
-        self.ultrasonic_dist: Optional[float] = None
-        self.ultrasonic_last_time: float = 0.0
+        self.ctrl_params = ControllerParams(
+            target_distance=self.target_distance,
+            distance_tolerance=self.distance_tolerance,
+            center_tolerance=self.center_tolerance,
+            angle_tolerance_deg=self.angle_tolerance_deg,
+            target_wall_angle_deg=self.target_wall_angle_deg,
+            wall_align_tol_deg=self.wall_align_tol_deg,
+            cam_x=self.cam_ext.x,
+            ref_x=self.cam_ext.x,
+            v_max=self.max_linear_vel,
+            v_min=self.min_linear_vel,
+            w_max=self.max_angular_vel,
+            w_min=self.min_angular_vel,
+            w_search=self.search_angular_vel,
+            staging_distance=0.30,
+            min_cross_distance=0.12,
+            allow_retreat=self.allow_retreat
+        )
+        self.controller = DockingController(self.ctrl_params)
 
-        # Camera intrinsic matrix & distortion coefficients
-        self.camera_matrix: Optional[np.ndarray] = None
-        self.dist_coeffs: Optional[np.ndarray] = None
-        self.camera_info_received = False
-        self._init_fallback_camera_matrix(640, 480)
+        # Internal state
+        self.docking_logged = False
+        self.last_logged_phase = Phase.IDLE
+        self.last_img_stamp = 0.0
+        self.last_scan_stamp = 0.0
+        self.last_compressed_rx_time = 0.0
+        self.last_rendered_debug: Optional[np.ndarray] = None
+        self.last_est: Optional[DockingEstimate] = None
+        self.last_marker_obs: Optional[MarkerObservation] = None
+        self.last_wall_obs: Optional[WallObservation] = None
 
-        # ArUco detector setup
-        self._init_aruco_detector()
-
-        # QoS Profiles
+        # QoS
         sensor_qos = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -135,967 +131,467 @@ class PrecisionDockingNode(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, self.cmd_vel_topic, reliable_qos)
         self.completed_pub = self.create_publisher(Bool, '/docking_completed', reliable_qos)
         self.debug_raw_pub = self.create_publisher(Image, '/docking/debug_image', sensor_qos)
-        self.debug_image_pub = self.create_publisher(
-            CompressedImage, '/docking/debug_image/compressed', sensor_qos
-        )
+        self.debug_image_pub = self.create_publisher(CompressedImage, '/docking/debug_image/compressed', sensor_qos)
 
         # Subscribers
+        compressed_topic = self.image_topic if 'compressed' in self.image_topic else f'{self.image_topic}/compressed'
+        raw_topic = self.image_topic.replace('/compressed', '')
+
         if self.use_compressed:
-            compressed_topic = self.image_topic if 'compressed' in self.image_topic else f"{self.image_topic}/compressed"
-            self.get_logger().info(f"Subscribing to CompressedImage: {compressed_topic}")
-            self.image_sub = self.create_subscription(
-                CompressedImage, compressed_topic, self._compressed_image_callback, sensor_qos
-            )
+            self.get_logger().info(f'[Branch A] Subscribing to CompressedImage: {compressed_topic} with raw fallback {raw_topic}')
+            self.image_sub = self.create_subscription(CompressedImage, compressed_topic, self._compressed_image_callback, sensor_qos)
+            self.raw_fallback_sub = self.create_subscription(Image, raw_topic, self._raw_fallback_image_callback, sensor_qos)
         else:
-            self.get_logger().info(f"Subscribing to raw Image: {self.image_topic}")
-            self.image_sub = self.create_subscription(
-                Image, self.image_topic, self._image_callback, sensor_qos
-            )
+            self.get_logger().info(f'[Branch A] Subscribing to raw Image: {raw_topic}')
+            self.image_sub = self.create_subscription(Image, raw_topic, self._image_callback, sensor_qos)
 
-        self.info_sub = self.create_subscription(
-            CameraInfo, self.camera_info_topic, self._camera_info_callback, sensor_qos
-        )
-        self.odom_sub = self.create_subscription(
-            Odometry, '/odom', self._odom_callback, reliable_qos
-        )
+        self.info_sub = self.create_subscription(CameraInfo, self.camera_info_topic, self._camera_info_callback, sensor_qos)
+        self.scan_sub = self.create_subscription(LaserScan, self.scan_topic, self._scan_callback, sensor_qos)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self._odom_callback, reliable_qos)
 
-        # Phase 3 & 4 Subscribers (LiDAR & Ultrasonic)
-        if self.enable_lidar_alignment:
-            self.get_logger().info(f"Enabling 2D LiDAR Wall Alignment on {self.scan_topic}")
-            self.scan_sub = self.create_subscription(
-                LaserScan, self.scan_topic, self._scan_callback, sensor_qos
-            )
+        # Services
+        self.start_srv = self.create_service(Trigger, self.trigger_service_name, self._handle_start_trigger)
+        self.cancel_srv = self.create_service(Trigger, self.cancel_service_name, self._handle_cancel_trigger)
 
-        if self.enable_ultrasonic_stop:
-            self.get_logger().info(f"Enabling Ultrasonic Range Feedback on {self.ultrasonic_topic}")
-            self.us_sub = self.create_subscription(
-                Range, self.ultrasonic_topic, self._ultrasonic_callback, sensor_qos
-            )
-
-        # Phase 1: ROS 2 Trigger Services
-        self.start_srv = self.create_service(
-            Trigger, self.trigger_service_name, self._handle_start_trigger
-        )
-        self.cancel_srv = self.create_service(
-            Trigger, self.cancel_service_name, self._handle_cancel_trigger
-        )
-
-        # Control Loop Timer (20Hz)
+        # 20 Hz Control Timer
         self.control_timer = self.create_timer(0.05, self._control_loop)
-
-        # Dynamic parameter callback
         self.add_on_set_parameters_callback(self._on_parameter_update)
 
-        self.get_logger().info(
-            f"PrecisionDockingNode v4.0 (Master Plan Edition) ready! "
-            f"State: {self.state.value}, StartInIdle: {self.start_in_idle}, TargetID: {self.target_marker_id}, "
-            f"GoalDist: {self.target_distance}m, CurvedS-Curve: {self.enable_curved_approach}, "
-            f"LiDARFit: {self.enable_lidar_alignment}, UltrasonicStop: {self.enable_ultrasonic_stop}"
-        )
+        if not self.start_in_idle:
+            now = self._get_time_sec()
+            self.controller.start(now)
+            self.get_logger().info('PrecisionDockingNode started immediately in SEARCH state.')
+        else:
+            self.get_logger().info('PrecisionDockingNode initialized in IDLE state. Waiting for /docking/start.')
+
+    def _get_time_sec(self) -> float:
+        return self.get_clock().now().nanoseconds * 1e-9
 
     def _declare_and_get_parameters(self):
-        """Declare ROS 2 parameters with defaults and load them."""
-        # 1. Trigger & Lifecycle settings (Phase 1)
-        self.declare_parameter('start_in_idle', True, ParameterDescriptor(description='Start in IDLE state waiting for service trigger'))
-        self.declare_parameter('trigger_service_name', '/docking/start', ParameterDescriptor(description='Trigger service name'))
-        self.declare_parameter('cancel_service_name', '/docking/cancel', ParameterDescriptor(description='Cancel service name'))
+        if not self.has_parameter('use_sim_time'):
+            self.declare_parameter('use_sim_time', False, ParameterDescriptor(description='Use simulation clock from /clock'))
+        self.declare_parameter('start_in_idle', False, ParameterDescriptor(description='Start in IDLE waiting for /docking/start'))
+        self.declare_parameter('trigger_service_name', '/docking/start')
+        self.declare_parameter('cancel_service_name', '/docking/cancel')
 
-        # 2. Marker settings
-        self.declare_parameter('marker_size', 0.06, ParameterDescriptor(description='Marker physical size (meters)'))
-        self.declare_parameter('target_marker_id', -1, ParameterDescriptor(description='Target ArUco Marker ID (-1 for auto-lock)'))
-        self.declare_parameter('aruco_dictionary_id', 'DICT_5X5_250', ParameterDescriptor(description='ArUco dictionary name'))
+        self.declare_parameter('marker_size', 0.06)
+        self.declare_parameter('target_marker_id', -1)
+        self.declare_parameter('targetmarkerid', -1)
+        self.declare_parameter('marker_id', -1)
+        self.declare_parameter('target_id', -1)
+        self.declare_parameter('aruco_dictionary_id', 'DICT_5X5_250')
+        self.declare_parameter('use_compressed', True)
+        self.declare_parameter('image_topic', '/camera/image_raw')
+        self.declare_parameter('camera_info_topic', '/camera/camera_info')
+        self.declare_parameter('cmd_vel_topic', '/cmd_vel')
+        self.declare_parameter('camera_x_offset', 0.0)
+        self.declare_parameter('camera_z_offset', 0.035)
+        self.declare_parameter('cam_tilt_deg', 0.0)
 
-        # 3. Topic settings
-        self.declare_parameter('use_compressed', True, ParameterDescriptor(description='Use CompressedImage stream'))
-        self.declare_parameter('image_topic', '/camera/image_raw', ParameterDescriptor(description='Base camera image topic'))
-        self.declare_parameter('camera_info_topic', '/camera/camera_info', ParameterDescriptor(description='CameraInfo topic'))
-        self.declare_parameter('cmd_vel_topic', '/cmd_vel', ParameterDescriptor(description='Twist command velocity topic'))
+        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('lidar_roi_angle_deg', 70.0)
+        self.declare_parameter('lidar_min_range', 0.03)
+        self.declare_parameter('lidar_max_range', 1.50)
 
-        # 4. T-Maneuver settings
-        self.declare_parameter('enable_t_maneuver', True, ParameterDescriptor(description='Use orthogonal T-maneuver for coarse alignment'))
-        self.declare_parameter('t_maneuver_min_dist', 0.20, ParameterDescriptor(description='Minimum distance from marker to perform T-maneuver (m)'))
-        self.declare_parameter('t_maneuver_lateral_speed', 0.05, ParameterDescriptor(description='Linear velocity during T-maneuver lateral drive (m/s)'))
-        self.declare_parameter('enable_wall_alignment', False, ParameterDescriptor(description='Pure bearing pursuit flag'))
+        self.declare_parameter('target_distance', 0.10)
+        self.declare_parameter('distance_tolerance', 0.01)
+        self.declare_parameter('center_tolerance', 0.005)
+        self.declare_parameter('angle_tolerance_deg', 2.0)
+        self.declare_parameter('target_wall_angle_deg', 0.0)
+        self.declare_parameter('wall_align_tol_deg', 0.5)
 
-        # 5. Curved S-Curve Controller (Phase 2: Stanley S-Curve)
-        self.declare_parameter('enable_curved_approach', True, ParameterDescriptor(description='Enable Stanley S-Curve smooth convergence'))
-        self.declare_parameter('kp_lateral', 1.5, ParameterDescriptor(description='Stanley lateral error convergence gain'))
-        self.declare_parameter('kp_wall_yaw', 1.8, ParameterDescriptor(description='Stanley wall heading alignment gain'))
-        self.declare_parameter('max_curve_yaw_rate', 0.25, ParameterDescriptor(description='Max angular velocity during curved approach (rad/s)'))
+        self.declare_parameter('max_linear_vel', 0.08)
+        self.declare_parameter('min_linear_vel', 0.008)
+        self.declare_parameter('max_angular_vel', 0.50)
+        self.declare_parameter('min_angular_vel', 0.04)
+        self.declare_parameter('search_angular_vel', 0.30)
+        self.declare_parameter('allow_retreat', True)
+        self.declare_parameter('osd_bg_alpha', 0.35)
+        self.declare_parameter('csv_log_path', '/home/user/pinky_pro/docking_experiment_log.csv')
 
-        # 6. Sensor Fusion (Phase 3 & 4: LiDAR & Ultrasonic)
-        self.declare_parameter('enable_lidar_alignment', True, ParameterDescriptor(description='Enable 2D LiDAR wall normal fitting'))
-        self.declare_parameter('scan_topic', '/scan', ParameterDescriptor(description='2D LiDAR LaserScan topic'))
-        self.declare_parameter('lidar_yaw_tolerance', 0.015, ParameterDescriptor(description='LiDAR wall angle tolerance (rad)'))
+        self.start_in_idle = bool(self.get_parameter('start_in_idle').value)
+        self.trigger_service_name = str(self.get_parameter('trigger_service_name').value)
+        self.cancel_service_name = str(self.get_parameter('cancel_service_name').value)
 
-        self.declare_parameter('enable_ultrasonic_stop', True, ParameterDescriptor(description='Enable ultrasonic sensor 3cm precision stop'))
-        self.declare_parameter('ultrasonic_topic', 'us_sensor/range', ParameterDescriptor(description='Ultrasonic Range topic'))
-        self.declare_parameter('target_distance', 0.03, ParameterDescriptor(description='Target docking stop distance (meters)'))
-        self.declare_parameter('distance_tolerance', 0.005, ParameterDescriptor(description='Distance tolerance (meters)'))
-        self.declare_parameter('vision_min_distance', 0.14, ParameterDescriptor(description='Distance before switching to precision stop (m)'))
-        self.declare_parameter('enable_blind_push', True, ParameterDescriptor(description='Fallback to odometry blind drive if ultrasonic unavailable'))
-        self.declare_parameter('blind_push_speed', 0.03, ParameterDescriptor(description='Velocity during blind/precision stop (m/s)'))
+        self.marker_size = float(self.get_parameter('marker_size').value)
+        self.target_marker_id = int(self.get_parameter('target_marker_id').value)
+        for alias in ('targetmarkerid', 'marker_id', 'target_id'):
+            val = int(self.get_parameter(alias).value)
+            if self.target_marker_id == -1 and val != -1:
+                self.target_marker_id = val
 
-        # 7. Controller parameters
-        self.declare_parameter('kp_linear', 0.5, ParameterDescriptor(description='Linear velocity proportional gain'))
-        self.declare_parameter('kp_angular', 1.2, ParameterDescriptor(description='Angular velocity proportional gain'))
-        self.declare_parameter('max_linear_vel', 0.08, ParameterDescriptor(description='Maximum linear velocity (m/s)'))
-        self.declare_parameter('max_angular_vel', 0.35, ParameterDescriptor(description='Maximum angular velocity (rad/s)'))
-        self.declare_parameter('min_linear_vel', 0.02, ParameterDescriptor(description='Minimum linear velocity'))
-        self.declare_parameter('min_angular_vel', 0.05, ParameterDescriptor(description='Minimum angular velocity'))
-        self.declare_parameter('invert_angular', False, ParameterDescriptor(description='Invert steering direction'))
+        self.aruco_dict_name = str(self.get_parameter('aruco_dictionary_id').value)
+        self.use_compressed = bool(self.get_parameter('use_compressed').value)
+        self.image_topic = str(self.get_parameter('image_topic').value)
+        self.camera_info_topic = str(self.get_parameter('camera_info_topic').value)
+        self.cmd_vel_topic = str(self.get_parameter('cmd_vel_topic').value)
+        self.camera_x_offset = float(self.get_parameter('camera_x_offset').value)
+        self.camera_z_offset = float(self.get_parameter('camera_z_offset').value)
+        self.cam_tilt_deg = float(self.get_parameter('cam_tilt_deg').value)
 
-        # 8. Safety & filter
-        self.declare_parameter('loss_timeout', 1.2, ParameterDescriptor(description='Timeout before treating marker as lost (s)'))
-        self.declare_parameter('ema_alpha', 0.6, ParameterDescriptor(description='EMA filter weight'))
-        self.declare_parameter('search_angular_vel', 0.20, ParameterDescriptor(description='Search rotation velocity (rad/s)'))
+        self.scan_topic = str(self.get_parameter('scan_topic').value)
+        self.lidar_roi_angle_deg = float(self.get_parameter('lidar_roi_angle_deg').value)
+        self.lidar_min_range = float(self.get_parameter('lidar_min_range').value)
+        self.lidar_max_range = float(self.get_parameter('lidar_max_range').value)
 
-        self._load_parameters()
+        self.target_distance = float(self.get_parameter('target_distance').value)
+        self.distance_tolerance = float(self.get_parameter('distance_tolerance').value)
+        self.center_tolerance = float(self.get_parameter('center_tolerance').value)
+        self.angle_tolerance_deg = float(self.get_parameter('angle_tolerance_deg').value)
+        self.target_wall_angle_deg = float(self.get_parameter('target_wall_angle_deg').value)
+        self.wall_align_tol_deg = float(self.get_parameter('wall_align_tol_deg').value)
 
-    def _load_parameters(self):
-        """Cache parameter values into instance variables."""
-        self.start_in_idle = self.get_parameter('start_in_idle').value
-        self.trigger_service_name = self.get_parameter('trigger_service_name').value
-        self.cancel_service_name = self.get_parameter('cancel_service_name').value
-
-        self.marker_size = self.get_parameter('marker_size').value
-        self.target_marker_id = self.get_parameter('target_marker_id').value
-        self.aruco_dict_name = self.get_parameter('aruco_dictionary_id').value
-        self.use_compressed = self.get_parameter('use_compressed').value
-        self.image_topic = self.get_parameter('image_topic').value
-        self.camera_info_topic = self.get_parameter('camera_info_topic').value
-        self.cmd_vel_topic = self.get_parameter('cmd_vel_topic').value
-
-        self.enable_t_maneuver = self.get_parameter('enable_t_maneuver').value
-        self.t_maneuver_min_dist = self.get_parameter('t_maneuver_min_dist').value
-        self.t_maneuver_lateral_speed = self.get_parameter('t_maneuver_lateral_speed').value
-        self.enable_wall_alignment = self.get_parameter('enable_wall_alignment').value
-
-        self.enable_curved_approach = self.get_parameter('enable_curved_approach').value
-        self.kp_lateral = self.get_parameter('kp_lateral').value
-        self.kp_wall_yaw = self.get_parameter('kp_wall_yaw').value
-        self.max_curve_yaw_rate = self.get_parameter('max_curve_yaw_rate').value
-
-        self.enable_lidar_alignment = self.get_parameter('enable_lidar_alignment').value
-        self.scan_topic = self.get_parameter('scan_topic').value
-        self.lidar_yaw_tolerance = self.get_parameter('lidar_yaw_tolerance').value
-
-        self.enable_ultrasonic_stop = self.get_parameter('enable_ultrasonic_stop').value
-        self.ultrasonic_topic = self.get_parameter('ultrasonic_topic').value
-        self.target_distance = self.get_parameter('target_distance').value
-        self.distance_tolerance = self.get_parameter('distance_tolerance').value
-        self.vision_min_distance = self.get_parameter('vision_min_distance').value
-        self.enable_blind_push = self.get_parameter('enable_blind_push').value
-        self.blind_push_speed = self.get_parameter('blind_push_speed').value
-
-        self.kp_linear = self.get_parameter('kp_linear').value
-        self.kp_angular = self.get_parameter('kp_angular').value
-        self.max_linear_vel = self.get_parameter('max_linear_vel').value
-        self.max_angular_vel = self.get_parameter('max_angular_vel').value
-        self.min_linear_vel = self.get_parameter('min_linear_vel').value
-        self.min_angular_vel = self.get_parameter('min_angular_vel').value
-        self.invert_angular = self.get_parameter('invert_angular').value
-        self.loss_timeout = self.get_parameter('loss_timeout').value
-        self.ema_alpha = self.get_parameter('ema_alpha').value
-        self.search_angular_vel = self.get_parameter('search_angular_vel').value
+        self.max_linear_vel = float(self.get_parameter('max_linear_vel').value)
+        self.min_linear_vel = float(self.get_parameter('min_linear_vel').value)
+        self.max_angular_vel = float(self.get_parameter('max_angular_vel').value)
+        self.min_angular_vel = float(self.get_parameter('min_angular_vel').value)
+        self.search_angular_vel = float(self.get_parameter('search_angular_vel').value)
+        self.allow_retreat = bool(self.get_parameter('allow_retreat').value)
+        self.osd_bg_alpha = float(self.get_parameter('osd_bg_alpha').value)
+        self.csv_log_path = str(self.get_parameter('csv_log_path').value)
 
     def _on_parameter_update(self, params: List[Parameter]) -> SetParametersResult:
-        """Handle dynamic parameter updates at runtime."""
-        dict_changed = False
-        for param in params:
-            if hasattr(self, param.name):
-                setattr(self, param.name, param.value)
-                if param.name == 'aruco_dictionary_id':
-                    self.aruco_dict_name = param.value
-                    dict_changed = True
-                self.get_logger().info(f"Parameter '{param.name}' updated to: {param.value}")
-        if dict_changed:
-            self._init_aruco_detector()
-            self.get_logger().info(f"ArUco Dictionary reinitialized: {self.aruco_dict_name}")
+        for p in params:
+            if hasattr(self, p.name):
+                setattr(self, p.name, p.value)
+                if p.name == 'lidar_roi_angle_deg':
+                    self.wall_fitter.p.fov_half_deg = float(p.value)
+                if hasattr(self.ctrl_params, p.name):
+                    setattr(self.ctrl_params, p.name, p.value)
+                self.get_logger().info(f"Updated parameter '{p.name}' = {p.value}")
         return SetParametersResult(successful=True)
 
-    def _handle_start_trigger(self, request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
-        """Phase 1: Handle /docking/start trigger service call."""
-        if self.state in [DockingState.IDLE, DockingState.DOCKED, DockingState.LOST]:
-            if self.consecutive_detect_count >= 1 and self.filtered_pose is not None:
-                self.state = DockingState.ALIGN_BEARING
-            else:
-                self.state = DockingState.SEARCH
-            self.get_logger().info(f"Docking triggered via service! Transitioned to {self.state.value}")
-            response.success = True
-            response.message = f"Docking initiated. Transitioned to {self.state.value}."
-        else:
-            response.success = True
-            response.message = f"Docking already actively running in state {self.state.value}."
-        return response
+    # -------------------------------------------------------------------------
+    # ROS 2 Callbacks
+    # -------------------------------------------------------------------------
+    def _handle_start_trigger(self, req: Trigger.Request, resp: Trigger.Response) -> Trigger.Response:
+        now = self._get_time_sec()
+        self.docking_logged = False
+        self.controller.start(now)
+        resp.success = True
+        resp.message = f'Docking started in {self.controller.phase.value}'
+        self.get_logger().info(resp.message)
+        return resp
 
-    def _handle_cancel_trigger(self, request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
-        """Phase 1: Handle /docking/cancel trigger service call."""
-        self.get_logger().warn("Docking cancelled via service! Transitioning to IDLE and stopping robot.")
-        self.state = DockingState.IDLE
+    def _handle_cancel_trigger(self, req: Trigger.Request, resp: Trigger.Response) -> Trigger.Response:
+        now = self._get_time_sec()
+        self.controller.cancel(now)
         self._stop_robot()
-        response.success = True
-        response.message = "Docking cancelled. Robot halted in IDLE."
-        return response
-
-    def _init_fallback_camera_matrix(self, width: int, height: int):
-        """Construct fallback intrinsic camera matrix when CameraInfo is not yet received."""
-        fx = fy = 0.8 * width
-        cx = width / 2.0
-        cy = height / 2.0
-        self.camera_matrix = np.array([
-            [fx, 0.0, cx],
-            [0.0, fy, cy],
-            [0.0, 0.0, 1.0]
-        ], dtype=np.float64)
-        self.dist_coeffs = np.zeros((5, 1), dtype=np.float64)
-
-    def _init_aruco_detector(self):
-        """Initialize ArUco detector supporting OpenCV 4.6+ through OpenCV 4.10+."""
-        dict_mapping = {
-            'DICT_4X4_50': cv2.aruco.DICT_4X4_50,
-            'DICT_4X4_100': cv2.aruco.DICT_4X4_100,
-            'DICT_5X5_50': cv2.aruco.DICT_5X5_50,
-            'DICT_5X5_100': cv2.aruco.DICT_5X5_100,
-            'DICT_5X5_250': cv2.aruco.DICT_5X5_250,
-            'DICT_6X6_250': cv2.aruco.DICT_6X6_250,
-        }
-        dict_id = dict_mapping.get(self.aruco_dict_name, cv2.aruco.DICT_5X5_250)
-        self.aruco_dict = cv2.aruco.getPredefinedDictionary(dict_id)
-
-        if hasattr(cv2.aruco, 'DetectorParameters_create'):
-            self.aruco_params = cv2.aruco.DetectorParameters_create()
-        else:
-            self.aruco_params = cv2.aruco.DetectorParameters()
-
-        # Robust detection tuning for high reliability
-        try:
-            self.aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-            self.aruco_params.cornerRefinementWinSize = 5
-            self.aruco_params.cornerRefinementMaxIterations = 30
-            self.aruco_params.cornerRefinementMinAccuracy = 0.1
-        except Exception as e:
-            self.get_logger().warn(f"Could not set cornerRefinementMethod: {e}")
-
-        if hasattr(cv2.aruco, 'ArucoDetector'):
-            self.detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
-            self.use_new_detector_api = True
-        else:
-            self.use_new_detector_api = False
+        resp.success = True
+        resp.message = 'Docking cancelled'
+        self.get_logger().info(resp.message)
+        return resp
 
     def _camera_info_callback(self, msg: CameraInfo):
-        """Extract calibrated intrinsic matrix and distortion coefficients."""
-        if not self.camera_info_received:
-            self.camera_matrix = np.array(msg.k, dtype=np.float64).reshape((3, 3))
-            self.dist_coeffs = np.array(msg.d, dtype=np.float64)
-            self.camera_info_received = True
-            self.get_logger().info(
-                f"CameraInfo calibrated matrix received! fx={self.camera_matrix[0,0]:.1f}, fy={self.camera_matrix[1,1]:.1f}"
-            )
-
-    def _odom_callback(self, msg: Odometry):
-        """Track robot odometry pose and orientation."""
-        self.current_odom_x = msg.pose.pose.position.x
-        self.current_odom_y = msg.pose.pose.position.y
-
-        q = msg.pose.pose.orientation
-        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        self.current_odom_yaw = math.atan2(siny_cosp, cosy_cosp)
-        self.odom_received = True
-
-    def _scan_callback(self, msg: LaserScan):
-        """Phase 3: 2D LiDAR wall line fitting in front of the robot."""
-        pts = []
-        angle_min = msg.angle_min
-        angle_inc = msg.angle_increment
-
-        for i, r in enumerate(msg.ranges):
-            if msg.range_min < r < msg.range_max and 0.08 < r < 0.90:
-                a = angle_min + i * angle_inc
-                # Extract front cone +/- 25 degrees
-                if abs(a) <= math.radians(25):
-                    # Robot frame: x forward, y left
-                    px = r * math.cos(a)
-                    py = r * math.sin(a)
-                    pts.append((px, py))
-
-        if len(pts) >= 8:
-            pts_arr = np.array(pts)
-            px = pts_arr[:, 0]
-            py = pts_arr[:, 1]
-
-            # Fit line: front wall is roughly perpendicular to x-axis, so x = m * y + c
-            # Slope m represents deviation from pure perpendicularity
-            try:
-                m, c = np.polyfit(py, px, 1)
-                # Yaw angle: m = dx/dy -> angle of wall relative to y-axis
-                wall_yaw = -math.atan(m)
-
-                # R-squared goodness of fit
-                pred_x = m * py + c
-                ss_res = np.sum((px - pred_x) ** 2)
-                ss_tot = np.sum((px - np.mean(px)) ** 2)
-                r2 = 1.0 - (ss_res / (ss_tot + 1e-6))
-
-                if r2 > 0.65:
-                    self.lidar_wall_yaw = wall_yaw
-                    self.lidar_front_dist = float(np.min(px))
-                    self.lidar_last_time = time.time()
-                    self.lidar_fit_r2 = float(r2)
-            except Exception:
-                pass
-
-    def _ultrasonic_callback(self, msg: Range):
-        """Phase 4: Ultrasonic sensor distance callback."""
-        if msg.range_min <= msg.range <= msg.range_max:
-            self.ultrasonic_dist = float(msg.range)
-            self.ultrasonic_last_time = time.time()
+        if not self.detector.intrinsics_from_info and len(msg.k) == 9:
+            K = np.array(msg.k, dtype=np.float64).reshape((3, 3))
+            if K[0, 0] > 1.0:
+                D = np.array(msg.d, dtype=np.float64) if len(msg.d) >= 4 else np.zeros(5)
+                self.detector.set_intrinsics(K, D, (msg.width, msg.height), from_info=True)
+                self.get_logger().info(f'[Branch A] CameraInfo received: fx={K[0,0]:.1f}, cx={K[0,2]:.1f}, cy={K[1,2]:.1f}')
 
     def _compressed_image_callback(self, msg: CompressedImage):
-        """Decode CompressedImage and process marker detection."""
         try:
+            now = self._get_time_sec()
+            self.last_compressed_rx_time = now
             np_arr = np.frombuffer(msg.data, np.uint8)
             cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             if cv_image is not None:
-                self._process_image(cv_image)
-        except Exception as e:
-            self.get_logger().error(f"Error decoding CompressedImage: {e}", throttle_duration_sec=2.0)
+                stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+                if stamp <= 0.0 or abs(now - stamp) > 3.0:
+                    stamp = now
+                self._process_image(cv_image, stamp)
+        except Exception as exc:
+            self.get_logger().error(f'[Branch A] Decode error: {exc}', throttle_duration_sec=2.0)
+
+    def _raw_fallback_image_callback(self, msg: Image):
+        if (self._get_time_sec() - self.last_compressed_rx_time) < 1.0:
+            return
+        self._image_callback(msg)
 
     def _image_callback(self, msg: Image):
-        """Convert raw Image and process marker detection."""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-            self._process_image(cv_image)
-        except Exception as e:
-            self.get_logger().error(f"Error converting Image: {e}", throttle_duration_sec=2.0)
+            now = self._get_time_sec()
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+            if stamp <= 0.0 or abs(now - stamp) > 3.0:
+                stamp = now
+            self._process_image(cv_image, stamp)
+        except Exception as exc:
+            self.get_logger().error(f'[Branch A] Image error: {exc}', throttle_duration_sec=2.0)
 
-    def _detect_markers(self, gray: np.ndarray):
-        """Encapsulate ArUco detection across OpenCV versions."""
-        if self.use_new_detector_api:
-            corners, ids, rejected = self.detector.detectMarkers(gray)
-        else:
-            corners, ids, rejected = cv2.aruco.detectMarkers(
-                gray, self.aruco_dict, parameters=self.aruco_params
-            )
-        return corners, ids
+    def _process_image(self, cv_image: np.ndarray, stamp: float):
+        h, w = cv_image.shape[:2]
+        if self.detector.K is None:
+            # Fallback pinhole FOV ~ 66 deg (1.15 rad in URDF)
+            self.detector.set_intrinsics_from_hfov(w, h, 1.1519)
 
-    def _estimate_pose_single_marker(self, corners, marker_size, camera_matrix, dist_coeffs):
-        """Estimate 6DOF pose of marker corners using solvePnP."""
-        s = marker_size / 2.0
-        obj_points = np.array([
-            [-s,  s, 0.0],
-            [ s,  s, 0.0],
-            [ s, -s, 0.0],
-            [-s, -s, 0.0]
-        ], dtype=np.float64)
-
-        img_points = corners.reshape((4, 2)).astype(np.float64)
-        success, rvec, tvec = cv2.solvePnP(
-            obj_points, img_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_IPPE_SQUARE
-        )
-        if not success:
-            success, rvec, tvec = cv2.solvePnP(
-                obj_points, img_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
-            )
-        return success, rvec, tvec
-
-    def _angle_diff(self, a: float, b: float) -> float:
-        """Calculate shortest signed angular difference (a - b) in [-pi, pi]."""
-        d = a - b
-        while d > math.pi:
-            d -= 2.0 * math.pi
-        while d < -math.pi:
-            d += 2.0 * math.pi
-        return d
-
-    def _process_image(self, cv_image: np.ndarray):
-        """Process video frame, estimate marker 3D pose, and maintain filter."""
         gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-        corners, ids = self._detect_markers(gray)
+        detected = self.detector.detect(gray)
 
-        target_detected = False
-        target_corners = None
-        target_idx = -1
-
-        if ids is not None and len(ids) > 0:
-            cv2.aruco.drawDetectedMarkers(cv_image, corners, ids)
-
+        chosen_id = None
+        chosen_corners = None
+        if detected:
             if self.target_marker_id == -1:
-                target_idx = 0
-                self.target_marker_id = int(ids[0][0])
-                self.get_logger().info(f"Auto-locked onto ArUco ID {self.target_marker_id}!")
-                target_detected = True
-                target_corners = corners[0]
+                # auto-select marker closest to image horizontal center
+                cx = w / 2.0
+                best_dist = float('inf')
+                for mid, c in detected:
+                    dist = abs(float(np.mean(c[:, 0])) - cx)
+                    if dist < best_dist:
+                        best_dist = dist
+                        chosen_id = mid
+                        chosen_corners = c
+                self.target_marker_id = chosen_id
+                self.get_logger().info(f'[Branch A] Auto-locked onto ArUco ID {chosen_id}')
             else:
-                for i, marker_id in enumerate(ids):
-                    if marker_id[0] == self.target_marker_id:
-                        target_idx = i
-                        target_detected = True
-                        target_corners = corners[i]
+                for mid, c in detected:
+                    if mid == self.target_marker_id:
+                        chosen_id = mid
+                        chosen_corners = c
                         break
 
-        if target_detected and target_corners is not None:
-            self.last_detection_time = time.time()
-            self.consecutive_detect_count += 1
+        phi_hint = self.estimator.wall_phi_in_base()
+        marker_obs = None
+        if chosen_corners is not None and chosen_id is not None:
+            marker_obs = self.detector.estimate(chosen_id, chosen_corners, stamp, phi_hint=phi_hint)
+            if marker_obs is not None:
+                self.estimator.update_camera(marker_obs)
+                self.last_marker_obs = marker_obs
 
-            success, target_rvec, target_tvec = self._estimate_pose_single_marker(
-                target_corners, self.marker_size, self.camera_matrix, self.dist_coeffs
-            )
+        self._render_debug_osd(cv_image, detected, marker_obs)
+        self._publish_debug(cv_image)
 
-            x = float(target_tvec[0][0])
-            y = float(target_tvec[1][0])
-            z = float(target_tvec[2][0])
+    def _scan_callback(self, msg: LaserScan):
+        now = self._get_time_sec()
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        if stamp <= 0.0 or abs(now - stamp) > 3.0:
+            stamp = now
+        pts = self.wall_fitter.scan_to_points(
+            ranges=msg.ranges,
+            angle_min=msg.angle_min,
+            angle_increment=msg.angle_increment,
+            range_min=msg.range_min,
+            range_max=msg.range_max
+        )
+        if len(pts) >= 12:
+            hint_pt = self.estimator.marker_point_in_base()
+            phi_hint = self.estimator.wall_phi_in_base()
+            hint_arr = np.array(hint_pt) if hint_pt is not None else None
+            wall_obs = self.wall_fitter.fit(pts, stamp=stamp, hint_point=hint_arr, phi_hint=phi_hint)
+            if wall_obs is not None:
+                self.estimator.update_lidar(wall_obs)
+                self.last_wall_obs = wall_obs
 
-            R, _ = cv2.Rodrigues(target_rvec)
-            normal_c = R[:, 2]
+    def _odom_callback(self, msg: Odometry):
+        now = self._get_time_sec()
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        if stamp <= 0.0 or abs(now - stamp) > 3.0:
+            stamp = now
+        pos = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        self.estimator.add_odom(stamp, Pose2D(pos.x, pos.y, yaw))
 
-            nx = normal_c[0]
-            nz = normal_c[2]
-            norm_len = math.hypot(nx, nz)
-            if norm_len > 1e-6:
-                nx_u = nx / norm_len
-                nz_u = nz / norm_len
-            else:
-                nx_u, nz_u = 0.0, 1.0
+    # -------------------------------------------------------------------------
+    # 20 Hz Control Loop
+    # -------------------------------------------------------------------------
+    def _control_loop(self):
+        now = self._get_time_sec()
+        est = self.estimator.estimate(now)
+        self.last_est = est
 
-            wall_angle = math.atan2(nx_u, nz_u)
-            dist_along_normal = (0.0 - x) * nx_u + (0.0 - z) * nz_u
+        out = self.controller.step(
+            now=now,
+            est=est,
+            cam_updates=self.estimator.cam_updates,
+            lidar_updates=self.estimator.lidar_updates
+        )
 
-            closest_x = x + dist_along_normal * nx_u
-            closest_z = z + dist_along_normal * nz_u
+        if self.last_logged_phase != out.phase:
+            self.get_logger().info(f"[Phase] {self.last_logged_phase.value} -> {out.phase.value} ({self.controller.reason})")
+            self.last_logged_phase = out.phase
 
-            signed_lat = (0.0 - closest_x) * nz_u + (0.0 - closest_z) * (-nx_u)
+        twist = Twist()
+        twist.linear.x = float(out.v)
+        twist.angular.z = float(out.w)
+        self._publish_twist(twist)
 
-            self.last_R = R
-            self.last_normal_u = (nx_u, nz_u)
-            self.last_closest_pt = (closest_x, closest_z)
-            self.last_known_bearing = math.atan2(x, z)
-            self.raw_pose = (x, y, z, wall_angle, signed_lat, dist_along_normal)
+        # Completion Status
+        is_docked = (out.phase == Phase.DOCKED)
+        comp_msg = Bool()
+        comp_msg.data = is_docked
+        self.completed_pub.publish(comp_msg)
 
-            # Exponential Moving Average (EMA) Jitter Filter
-            if self.filtered_pose is None:
-                self.filtered_pose = [x, y, z, wall_angle, signed_lat, dist_along_normal]
-            else:
-                a = self.ema_alpha
-                self.filtered_pose[0] = a * x + (1.0 - a) * self.filtered_pose[0]
-                self.filtered_pose[1] = a * y + (1.0 - a) * self.filtered_pose[1]
-                self.filtered_pose[2] = a * z + (1.0 - a) * self.filtered_pose[2]
-                self.filtered_pose[3] = a * wall_angle + (1.0 - a) * self.filtered_pose[3]
-                self.filtered_pose[4] = a * signed_lat + (1.0 - a) * self.filtered_pose[4]
-                self.filtered_pose[5] = a * dist_along_normal + (1.0 - a) * self.filtered_pose[5]
+        if is_docked and not self.docking_logged and self.controller.result is not None:
+            self._log_docking_success(now, est, self.controller.result)
 
-            cv2.drawFrameAxes(
-                cv_image, self.camera_matrix, self.dist_coeffs,
-                target_rvec, target_tvec, self.marker_size * 0.8
-            )
+    def _log_docking_success(self, now: float, est: DockingEstimate, res: dict):
+        self.docking_logged = True
+        elapsed = res.get('elapsed', 0.0)
+        d_err = res.get('distance_error', 0.0)
+        y_err = res.get('lateral_error', 0.0)
+        ang_err = res.get('angle_error_deg', 0.0)
+
+        raw_cam_d = est.raw.get('cam_d', float('nan'))
+        raw_lid_d = est.raw.get('lidar_d', float('nan'))
+
+        self.get_logger().info(
+            f"\n====================================================================\n"
+            f"          [AUTODOCKING COMPLETED] PRECISION TOLERANCES MET!          \n"
+            f"====================================================================\n"
+            f" - Target Distance (d_target) : {self.target_distance:.4f} m\n"
+            f" - Final Docked Dist (d_ref)  : {est.d_ref:.4f} m (Error: {d_err*100:+.2f} cm)\n"
+            f" - Final Lateral Error (y)    : {y_err*100:+.2f} cm (Tol: +/-{self.center_tolerance*100:.1f} cm)\n"
+            f" - Final Angular Error (psi)  : {ang_err:+.2f} deg (Tol: +/-{self.angle_tolerance_deg:.1f} deg)\n"
+            f" - Camera Distance Raw        : {raw_cam_d:.4f} m\n"
+            f" - LiDAR Distance Raw         : {raw_lid_d:.4f} m\n"
+            f" - Elapsed Time               : {elapsed:.2f} s\n"
+            f" - Retries / Intercepts       : {res.get('retries', 0)} / {res.get('intercepts', 0)}\n"
+            f"===================================================================="
+        )
+
+        try:
+            os.makedirs(os.path.dirname(self.csv_log_path), exist_ok=True)
+            exists = os.path.isfile(self.csv_log_path)
+            with open(self.csv_log_path, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                if not exists:
+                    writer.writerow([
+                        'timestamp', 'target_marker_id', 'cam_distance_m', 'lidar_distance_m',
+                        'fused_distance_m', 'lateral_error_m', 'angular_error_deg', 'elapsed_time_s'
+                    ])
+                writer.writerow([
+                    datetime.now().isoformat(timespec='seconds'),
+                    self.target_marker_id,
+                    f"{raw_cam_d:.4f}",
+                    f"{raw_lid_d:.4f}",
+                    f"{est.d_ref:.4f}",
+                    f"{y_err:.4f}",
+                    f"{ang_err:.3f}",
+                    f"{elapsed:.2f}"
+                ])
+            self.get_logger().info(f"Saved docking metric to CSV: {self.csv_log_path}")
+        except Exception as e:
+            self.get_logger().error(f"Failed to write CSV: {e}")
+
+    # -------------------------------------------------------------------------
+    # Debug OSD Visualization
+    # -------------------------------------------------------------------------
+    def _render_debug_osd(self, img: np.ndarray, detected, marker_obs: Optional[MarkerObservation]):
+        h, w = img.shape[:2]
+        banner_h = 98
+
+        # Semi-transparent dark background for OSD (allows camera view to show through clearly)
+        alpha = float(getattr(self, 'osd_bg_alpha', 0.35))
+        if alpha > 0.0:
+            roi = img[0:banner_h, 0:w]
+            dark_mask = np.full_like(roi, 15)  # dark background tint
+            cv2.addWeighted(dark_mask, alpha, roi, 1.0 - alpha, 0, dst=roi)
+
+        def put_text(text: str, org: Tuple[int, int], scale: float, col: Tuple[int, int, int], thick: int = 1):
+            # Crisp black outline/shadow for readability over transparent camera feed
+            cv2.putText(img, text, (org[0] + 1, org[1] + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+            cv2.putText(img, text, org, cv2.FONT_HERSHEY_SIMPLEX, scale, col, thick, cv2.LINE_AA)
+
+        # Crosshair at image optical center
+        cx, cy = w // 2, h // 2
+        cv2.line(img, (cx, 0), (cx, h), (0, 255, 255), 1, cv2.LINE_AA)
+        cv2.circle(img, (cx, cy), 6, (0, 255, 255), 1, cv2.LINE_AA)
+
+        # Phase color
+        ph = self.controller.phase
+        phase_colors = {
+            Phase.IDLE: (180, 180, 180),
+            Phase.SEARCH: (0, 165, 255),
+            Phase.ACQUIRE: (255, 200, 0),
+            Phase.VERIFY: (255, 255, 0),
+            Phase.INTERCEPT_TURN: (255, 120, 0),
+            Phase.INTERCEPT_DRIVE: (255, 80, 0),
+            Phase.AXIS_ALIGN: (200, 180, 0),
+            Phase.TERMINAL: (0, 255, 120),
+            Phase.FINAL_ALIGN: (0, 255, 220),
+            Phase.WALL_ALIGN: (0, 255, 255),
+            Phase.RETREAT: (0, 0, 255),
+            Phase.REACQUIRE: (0, 100, 255),
+            Phase.DOCKED: (0, 255, 0),
+            Phase.FAILED: (0, 0, 180)
+        }
+        color = phase_colors.get(ph, (255, 255, 255))
+
+        # Line 1: Phase & Reason
+        reason_txt = f" ({self.controller.reason[:32]})" if self.controller.reason else ""
+        put_text(f"PHASE: {ph.value}{reason_txt}", (12, 22), 0.52, color, 2)
+        put_text(f"ID: {self.target_marker_id} | Goal: {self.target_distance:.2f}m", (max(w - 240, 360), 22),
+                 0.48, (220, 220, 220), 1)
+
+        # Line 2: Camera Branch (solvePnP pose)
+        if marker_obs is not None:
+            c_txt = f"[Cam ArUco] range: {marker_obs.range_cam:.3f}m | bear: {math.degrees(marker_obs.bearing):+.1f}d | phi: {math.degrees(marker_obs.phi):+.1f}d | reproj: {marker_obs.reproj_err:.2f}px"
+            c_color = (120, 255, 120)
+            cv2.aruco.drawDetectedMarkers(img, [marker_obs.corners.astype(np.float32).reshape(1, 4, 2)],
+                                          np.array([[marker_obs.marker_id]], dtype=np.int32))
+            cv2.drawFrameAxes(img, self.detector.K, self.detector.D, marker_obs.rvec, marker_obs.tvec, self.marker_size * 0.75)
         else:
-            self.consecutive_detect_count = 0
+            c_txt = "[Cam ArUco] Waiting for ArUco 5x5 detection..."
+            c_color = (150, 150, 150)
+        put_text(c_txt, (12, 46), 0.44, c_color, 1)
 
-        self._draw_osd(cv_image, ids, target_detected)
-        self._publish_debug_image(cv_image)
-
-    def _draw_osd(self, image: np.ndarray, detected_ids=None, target_detected: bool = False):
-        """Render informative On-Screen Display (OSD) overlay on camera feed."""
-        h, w = image.shape[:2]
-        banner_h = 75
-        cv2.rectangle(image, (0, 0), (w, banner_h), (20, 20, 20), -1)
-
-        state_color = {
-            DockingState.IDLE: (180, 180, 180),
-            DockingState.SEARCH: (0, 165, 255),
-            DockingState.ALIGN_BEARING: (255, 200, 0),
-            DockingState.T_TURN_PARALLEL: (255, 140, 0),
-            DockingState.T_DRIVE_LATERAL: (255, 80, 20),
-            DockingState.T_RETURN_FACING: (200, 100, 255),
-            DockingState.FINE_ALIGN: (0, 200, 255),
-            DockingState.APPROACH_NORMAL: (0, 255, 200),
-            DockingState.ALIGN_WALL: (255, 50, 200),
-            DockingState.FINAL_APPROACH: (0, 255, 255),
-            DockingState.PRECISION_STOP: (0, 255, 120),
-            DockingState.BLIND_PUSH: (255, 100, 255),
-            DockingState.DOCKED: (0, 255, 0),
-            DockingState.LOST: (0, 0, 255)
-        }.get(self.state, (200, 200, 200))
-
-        # Row 1 (y=22): Title, State, Target Info
-        cv2.putText(image, "PINKY DOCKING v4.0", (15, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
-        cv2.putText(image, f"STATE: {self.state.value}", (195, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.60, state_color, 2)
-        dict_info = f"Target: {self.target_marker_id} | Goal: {self.target_distance*100:.1f}cm"
-        cv2.putText(image, dict_info, (max(w - 260, 380), 22), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
-
-        # Row 2 & 3: Telemetry & Status
-        now = time.time()
-        lidar_info = ""
-        if self.lidar_wall_yaw is not None and (now - self.lidar_last_time) < 1.0:
-            lidar_info = f"LiDAR Wall: {math.degrees(self.lidar_wall_yaw):+.1f} deg"
-        us_info = ""
-        if self.ultrasonic_dist is not None and (now - self.ultrasonic_last_time) < 1.0:
-            us_info = f"US: {self.ultrasonic_dist*100:.1f}cm"
-
-        if self.state == DockingState.IDLE:
-            cv2.putText(image, "IDLE - Standby (Call /docking/start to engage)", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 180, 180), 2)
-        elif self.state == DockingState.PRECISION_STOP:
-            status_text = f"Precision Stop: {us_info or lidar_info or 'Decelerating'} -> Goal 3cm"
-            cv2.putText(image, status_text, (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 120), 2)
-        elif self.state == DockingState.T_TURN_PARALLEL:
-            turned = self._angle_diff(self.current_odom_yaw, self.turn_start_yaw)
-            cv2.putText(image, f"Step 1: Turn to Wall ({math.degrees(turned):+.1f} deg / Goal: {math.degrees(self.t_turn_angle_1):+.1f} deg)", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 140, 0), 2)
-        elif self.state == DockingState.T_DRIVE_LATERAL:
-            moved = math.hypot(self.current_odom_x - self.lat_start_x, self.current_odom_y - self.lat_start_y)
-            cv2.putText(image, f"Step 2: Lateral Drive ({moved*100:.1f}cm / Goal: {self.lat_target_dist*100:.1f}cm)", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 80, 20), 2)
-        elif self.state == DockingState.T_RETURN_FACING:
-            turned = self._angle_diff(self.current_odom_yaw, self.turn_start_yaw)
-            cv2.putText(image, f"Step 3: Return Turn ({math.degrees(turned):+.1f} deg / Goal: {math.degrees(self.t_turn_angle_2):+.1f} deg)", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 100, 255), 2)
-        elif self.state == DockingState.BLIND_PUSH:
-            moved = math.hypot(self.current_odom_x - self.blind_start_x, self.current_odom_y - self.blind_start_y)
-            cv2.putText(image, f"Blind Push: {moved*100:.1f}cm / {self.blind_target_dist*100:.1f}cm", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 100, 255), 2)
-        elif self.filtered_pose is not None:
-            x, y, z, wall_angle, signed_lat, dist_along_normal = self.filtered_pose
-            sensor_tag = f"[{us_info} | {lidar_info}]" if (us_info or lidar_info) else ""
-            pose_str = f"Dist(Z): {z:.3f}m | LatErr: {signed_lat*100:+.1f}cm {sensor_tag}"
-            lat_str = f"AngleErr: {math.degrees(wall_angle):+.1f} deg | NormalDist: {dist_along_normal:.3f}m"
-            cv2.putText(image, pose_str, (15, 46), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (220, 220, 220), 1)
-            cv2.putText(image, lat_str, (15, 66), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (0, 255, 200), 1)
+        # Line 3: LiDAR Branch
+        if self.last_wall_obs is not None and (self._get_time_sec() - self.last_wall_obs.stamp) < 1.0:
+            wobs = self.last_wall_obs
+            l_txt = f"[2D LiDAR ] wall_d: {wobs.distance:.3f}m | phi: {math.degrees(wobs.phi):+.1f}d | rms: {wobs.rms*1000:.1f}mm | inliers: {wobs.n_inliers} | span: {wobs.span*100:.1f}cm"
+            l_color = (255, 220, 80)
         else:
-            cv2.putText(image, "Searching for ArUco 5x5 marker...", (15, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (150, 150, 150), 1)
+            l_txt = "[2D LiDAR ] Waiting for scan wall points..."
+            l_color = (150, 150, 150)
+        put_text(l_txt, (12, 68), 0.44, l_color, 1)
 
-    def _publish_debug_image(self, image: np.ndarray):
-        """Publish debug visualization image."""
-        has_sub_raw = self.debug_raw_pub.get_subscription_count() > 0
-        has_sub_comp = self.debug_image_pub.get_subscription_count() > 0
+        # Line 4: Fusion & Tolerances
+        if self.last_est is not None and self.last_est.valid:
+            e = self.last_est
+            rem = e.d_ref - self.target_distance
+            f_txt = f"[Fused Est] d_ref: {e.d_ref:.3f}m (rem: {rem*100:+.2f}cm) | y: {e.y*100:+.2f}cm | psi: {math.degrees(e.psi):+.1f}d | sig:(d={e.sigma_d*1000:.1f}mm, y={e.sigma_y*1000:.1f}mm)"
+            f_color = (0, 255, 255)
+        else:
+            f_txt = "[Fused Est] Estimator initializing anchor..."
+            f_color = (180, 180, 180)
+        put_text(f_txt, (12, 90), 0.44, f_color, 1)
 
-        if has_sub_raw:
+    def _publish_debug(self, img: np.ndarray):
+        stamp = self.get_clock().now().to_msg()
+        if self.debug_raw_pub.get_subscription_count() > 0:
             try:
-                raw_msg = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
-                raw_msg.header.stamp = self.get_clock().now().to_msg()
+                raw_msg = self.bridge.cv2_to_imgmsg(img, encoding='bgr8')
+                raw_msg.header.stamp = stamp
                 self.debug_raw_pub.publish(raw_msg)
             except Exception:
                 pass
 
-        if has_sub_comp or not has_sub_raw:
-            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
-            success, encoded_img = cv2.imencode('.jpg', image, encode_param)
+        if self.debug_image_pub.get_subscription_count() > 0:
+            success, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if success:
-                msg = CompressedImage()
-                msg.header.stamp = self.get_clock().now().to_msg()
-                msg.format = "jpeg"
-                msg.data = encoded_img.tobytes()
-                self.debug_image_pub.publish(msg)
-
-    def _control_loop(self):
-        """Main 20Hz FSM Control Loop."""
-        # Phase 1: In IDLE, do not emit any cmd_vel, allowing Nav2 free control
-        if self.state == DockingState.IDLE:
-            status_msg = Bool()
-            status_msg.data = False
-            self.completed_pub.publish(status_msg)
-            return
-
-        now = time.time()
-        time_since_last_detection = now - self.last_detection_time
-
-        # Watchdog: Ignore marker loss during open-loop or sensor-based terminal docking phases
-        if self.state not in [
-            DockingState.IDLE, DockingState.SEARCH, DockingState.LOST,
-            DockingState.T_TURN_PARALLEL, DockingState.T_DRIVE_LATERAL, DockingState.T_RETURN_FACING,
-            DockingState.PRECISION_STOP, DockingState.BLIND_PUSH, DockingState.DOCKED
-        ]:
-            if time_since_last_detection > self.loss_timeout:
-                self.get_logger().warn(
-                    f"Marker lost for {time_since_last_detection:.2f}s in state {self.state.value}! Initiating recovery."
-                )
-                self.last_state = self.state
-                self.state = DockingState.LOST
-
-        twist = Twist()
-        completed = False
-
-        if self.state == DockingState.SEARCH:
-            self._handle_search(twist)
-        elif self.state == DockingState.LOST:
-            self._handle_lost(twist, time_since_last_detection)
-        elif self.state == DockingState.ALIGN_BEARING:
-            self._handle_align_bearing(twist)
-        elif self.state == DockingState.T_TURN_PARALLEL:
-            self._handle_t_turn_parallel(twist)
-        elif self.state == DockingState.T_DRIVE_LATERAL:
-            self._handle_t_drive_lateral(twist)
-        elif self.state == DockingState.T_RETURN_FACING:
-            self._handle_t_return_facing(twist)
-        elif self.state == DockingState.FINE_ALIGN:
-            self._handle_fine_align(twist)
-        elif self.state == DockingState.APPROACH_NORMAL:
-            self._handle_approach_normal(twist)
-        elif self.state == DockingState.ALIGN_WALL:
-            self._handle_align_wall(twist)
-        elif self.state == DockingState.FINAL_APPROACH:
-            self._handle_final_approach(twist)
-        elif self.state == DockingState.PRECISION_STOP:
-            self._handle_precision_stop(twist)
-        elif self.state == DockingState.BLIND_PUSH:
-            self._handle_blind_push(twist)
-        elif self.state == DockingState.DOCKED:
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            completed = True
-
-        if self.state in [
-            DockingState.T_TURN_PARALLEL, DockingState.T_DRIVE_LATERAL, DockingState.T_RETURN_FACING,
-            DockingState.FINE_ALIGN, DockingState.APPROACH_NORMAL, DockingState.FINAL_APPROACH,
-            DockingState.PRECISION_STOP, DockingState.BLIND_PUSH
-        ]:
-            if self.filtered_pose is not None:
-                x, _, z, wall_angle, signed_lat, _ = self.filtered_pose
-                self.get_logger().info(
-                    f"[{self.state.value}] z={z:.2f}m, lat={signed_lat*100:+.1f}cm, ang={math.degrees(wall_angle):+.1f} deg | Cmd: v={twist.linear.x:.2f}, w={twist.angular.z:+.2f}",
-                    throttle_duration_sec=0.5
-                )
-
-        self._publish_twist(twist)
-
-        status_msg = Bool()
-        status_msg.data = completed
-        self.completed_pub.publish(status_msg)
-
-    def _handle_search(self, twist: Twist):
-        """Rotate slowly until 5x5 marker is detected."""
-        if self.consecutive_detect_count >= 1 and self.filtered_pose is not None:
-            self.get_logger().info("5x5 Marker acquired! Transitioning to ALIGN_BEARING.")
-            self.state = DockingState.ALIGN_BEARING
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-        else:
-            twist.linear.x = 0.0
-            twist.angular.z = -self.search_angular_vel if self.invert_angular else self.search_angular_vel
-
-    def _handle_lost(self, twist: Twist, time_since_loss: float):
-        """Active recovery on marker loss."""
-        twist.linear.x = 0.0
-        if self.consecutive_detect_count >= 1:
-            self.get_logger().info("Marker RE-ACQUIRED! Resuming ALIGN_BEARING.")
-            self.state = DockingState.ALIGN_BEARING
-            twist.angular.z = 0.0
-            return
-
-        lost_duration = time_since_loss - self.loss_timeout
-        if lost_duration < 1.5:
-            recovery_w = 0.12
-            if self.last_known_bearing is not None and abs(self.last_known_bearing) > 0.03:
-                scan_dir = -1.0 if self.last_known_bearing > 0 else 1.0
-            else:
-                scan_dir = -self.last_turn_dir
-
-            if self.invert_angular:
-                scan_dir = -scan_dir
-            twist.angular.z = scan_dir * recovery_w
-        elif lost_duration < 3.0:
-            twist.angular.z = 0.0
-        else:
-            self.get_logger().warn("[LOST Timeout] Resetting to full SEARCH.")
-            self.filtered_pose = None
-            self.last_known_bearing = None
-            self.state = DockingState.SEARCH
-            twist.angular.z = 0.0
-
-    def _handle_align_bearing(self, twist: Twist):
-        """Rotate in place to center marker in camera view."""
-        x, _, z, wall_angle, signed_lat, dist_along_normal = self.filtered_pose
-        bearing_error = math.atan2(x, z)
-
-        if abs(bearing_error) <= 0.03:  # ~1.7 deg
-            twist.angular.z = 0.0
-            lateral_err = abs(signed_lat)
-            angle_err = abs(wall_angle)
-            needs_t_maneuver = (lateral_err > 0.03) or (angle_err > 0.08)
-
-            if self.enable_t_maneuver and (z >= self.t_maneuver_min_dist) and needs_t_maneuver and self.last_closest_pt is not None:
-                closest_x, closest_z = self.last_closest_pt
-                dist_to_normal = math.hypot(closest_x, closest_z)
-                bearing_to_normal = math.atan2(closest_x, closest_z)
-                delta_theta = -bearing_to_normal
-
-                self.t_turn_angle_1 = delta_theta
-                self.t_lateral_offset = dist_to_normal
-                self.turn_start_yaw = self.current_odom_yaw
-
-                self.get_logger().info(
-                    f"=== T-MANEUVER INITIATED === Lateral: {signed_lat*100:+.1f}cm, Angle: {math.degrees(wall_angle):+.1f} deg. "
-                    f"Step 1: Turning {math.degrees(delta_theta):+.1f} deg parallel to wall."
-                )
-                self.state = DockingState.T_TURN_PARALLEL
-                return
-            else:
-                self.get_logger().info("Collinear condition satisfied. Advancing to APPROACH_NORMAL.")
-                self.state = DockingState.APPROACH_NORMAL
-        else:
-            ang_cmd = self.kp_angular * bearing_error
-            twist.angular.z = self._clamp_angular(-ang_cmd)
-            twist.linear.x = 0.0
-            if abs(twist.angular.z) > 0.02:
-                self.last_turn_dir = 1.0 if twist.angular.z > 0 else -1.0
-
-    def _handle_t_turn_parallel(self, twist: Twist):
-        """Step 1 of T-Maneuver: Rotate in place parallel to wall."""
-        turned = self._angle_diff(self.current_odom_yaw, self.turn_start_yaw)
-        remaining = self.t_turn_angle_1 - turned
-
-        if abs(remaining) <= 0.025:
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            self.lat_start_x = self.current_odom_x
-            self.lat_start_y = self.current_odom_y
-            self.lat_target_dist = abs(self.t_lateral_offset)
-            self.state = DockingState.T_DRIVE_LATERAL
-        else:
-            ang_cmd = self.kp_angular * remaining
-            twist.linear.x = 0.0
-            twist.angular.z = self._clamp_angular(ang_cmd)
-
-    def _handle_t_drive_lateral(self, twist: Twist):
-        """Step 2 of T-Maneuver: Drive straight along wall."""
-        moved = math.hypot(self.current_odom_x - self.lat_start_x, self.current_odom_y - self.lat_start_y)
-        remaining = self.lat_target_dist - moved
-
-        if remaining <= 0.005:
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            self.turn_start_yaw = self.current_odom_yaw
-            self.t_turn_angle_2 = -math.copysign(math.pi / 2.0, self.t_turn_angle_1)
-            self.state = DockingState.T_RETURN_FACING
-        else:
-            speed = min(self.t_maneuver_lateral_speed, self.kp_linear * remaining)
-            speed = max(speed, self.min_linear_vel)
-            twist.linear.x = self._clamp_linear(speed)
-            twist.angular.z = 0.0
-
-    def _handle_t_return_facing(self, twist: Twist):
-        """Step 3 of T-Maneuver: Rotate in place to face marker."""
-        turned = self._angle_diff(self.current_odom_yaw, self.turn_start_yaw)
-        remaining = self.t_turn_angle_2 - turned
-
-        if abs(remaining) <= 0.025:
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            self.fine_align_start_time = time.time()
-            self.last_detection_time = time.time()
-            self.state = DockingState.FINE_ALIGN
-        else:
-            ang_cmd = self.kp_angular * remaining
-            twist.linear.x = 0.0
-            twist.angular.z = self._clamp_angular(ang_cmd)
-
-    def _handle_fine_align(self, twist: Twist):
-        """Step 4 of T-Maneuver: Visual re-centering."""
-        twist.linear.x = 0.0
-        now = time.time()
-
-        if self.consecutive_detect_count >= 1 and self.filtered_pose is not None:
-            x, _, z, wall_angle, signed_lat, dist_along_normal = self.filtered_pose
-            bearing_error = math.atan2(x, z)
-
-            if abs(bearing_error) <= 0.025:
-                twist.angular.z = 0.0
-                self.get_logger().info("Collinear Lock achieved! Proceeding to APPROACH_NORMAL.")
-                self.state = DockingState.APPROACH_NORMAL
-                return
-            else:
-                ang_cmd = self.kp_angular * bearing_error
-                twist.angular.z = self._clamp_angular(-ang_cmd)
-                return
-
-        if now - self.fine_align_start_time > 3.0:
-            self.get_logger().warn("Fine align timeout! Resuming ALIGN_BEARING.")
-            self.state = DockingState.ALIGN_BEARING
-
-    def _handle_approach_normal(self, twist: Twist):
-        """
-        Phase 2: Stanley S-Curve Controller for continuous smooth convergence.
-        Steering: w = -kp_wall_yaw * wall_angle + kp_lateral * atan2(1.2 * signed_lat, vx + 0.01)
-        """
-        x, _, z, wall_angle, signed_lat, dist_along_normal = self.filtered_pose
-
-        # Hand off to FINAL_APPROACH when within 0.28m
-        if z <= max(self.vision_min_distance + 0.12, 0.28):
-            self.get_logger().info(f"Approach Normal near wall ({z:.2f}m). Transitioning to FINAL_APPROACH.")
-            self.state = DockingState.FINAL_APPROACH
-            return
-
-        # Forward speed
-        dist_err = z - self.target_distance
-        lin_cmd = self.kp_linear * 0.7 * dist_err
-        lin_cmd = max(min(lin_cmd, self.max_linear_vel), self.min_linear_vel)
-        twist.linear.x = self._clamp_linear(lin_cmd)
-
-        if self.enable_curved_approach:
-            # Stanley S-Curve formulation
-            # 1. Lateral offset convergence term (turns toward marker normal axis)
-            delta_lat = self.kp_lateral * math.atan2(1.2 * signed_lat, twist.linear.x + 0.01)
-            # 2. Heading alignment term (counter-steers to maintain perpendicularity to wall)
-            delta_yaw = -self.kp_wall_yaw * wall_angle
-
-            raw_w = delta_yaw + delta_lat
-            # Clamp to max_curve_yaw_rate to prevent sharp erratic steering
-            raw_w = max(min(raw_w, self.max_curve_yaw_rate), -self.max_curve_yaw_rate)
-            twist.angular.z = self._clamp_angular(raw_w)
-        else:
-            bearing_error = math.atan2(x, z)
-            ang_cmd = self.kp_angular * bearing_error
-            twist.angular.z = self._clamp_angular(-ang_cmd)
-
-        if abs(twist.angular.z) > 0.02:
-            self.last_turn_dir = 1.0 if twist.angular.z > 0 else -1.0
-
-    def _handle_align_wall(self, twist: Twist):
-        """Compatibility forwarder to FINAL_APPROACH."""
-        self.state = DockingState.FINAL_APPROACH
-        self._handle_final_approach(twist)
-
-    def _handle_final_approach(self, twist: Twist):
-        """
-        Phase 3: Final Approach with optional 2D LiDAR wall alignment.
-        Hands off to PRECISION_STOP or BLIND_PUSH at vision_min_distance (<14cm).
-        """
-        x, _, z, wall_angle, signed_lat, dist_along_normal = self.filtered_pose
-        dist_err = z - self.target_distance
-        bearing_error = math.atan2(x, z)
-
-        # Transition to Phase 4 (Ultrasonic / LiDAR precision stop) or Blind Push
-        if z <= self.vision_min_distance:
-            if self.enable_ultrasonic_stop:
-                self.get_logger().info(
-                    f"Reached vision limit ({z*100:.1f}cm). Switching to PRECISION_STOP using Ultrasonic/LiDAR feedback!"
-                )
-                self.state = DockingState.PRECISION_STOP
-                return
-            elif self.enable_blind_push:
-                push_dist = z - self.target_distance
-                self.blind_start_x = self.current_odom_x
-                self.blind_start_y = self.current_odom_y
-                self.blind_target_dist = push_dist
-                self.get_logger().info(
-                    f"Reached vision limit ({z*100:.1f}cm). Switching to BLIND_PUSH for {push_dist*100:.1f}cm using Odometry!"
-                )
-                self.state = DockingState.BLIND_PUSH
-                return
-
-        # Direct docking completion if target_distance is within vision range
-        if abs(dist_err) <= self.distance_tolerance and abs(bearing_error) <= 0.05:
-            self.get_logger().info(f"=== DOCKING COMPLETED! === Final Dist: {z:.3f}m, LatErr: {signed_lat*100:+.1f}cm")
-            self.state = DockingState.DOCKED
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            return
-
-        # Phase 3: Fuse 2D LiDAR wall yaw if available
-        now = time.time()
-        effective_wall_yaw = wall_angle
-        if self.enable_lidar_alignment and self.lidar_wall_yaw is not None and (now - self.lidar_last_time) < 0.5:
-            effective_wall_yaw = self.lidar_wall_yaw
-
-        # Steering: blend bearing centering with wall perpendicularity
-        ang_cmd = self.kp_angular * 0.9 * bearing_error + (-0.5 * effective_wall_yaw)
-        twist.angular.z = self._clamp_angular(-ang_cmd)
-
-        lin_cmd = self.kp_linear * dist_err
-        twist.linear.x = self._clamp_linear(lin_cmd)
-
-        if abs(twist.angular.z) > 0.02:
-            self.last_turn_dir = 1.0 if twist.angular.z > 0 else -1.0
-
-    def _handle_precision_stop(self, twist: Twist):
-        """
-        Phase 4: Sensor-Fused Precision Stop (Target: 3cm / 0.03m).
-        Active real-time feedback using Ultrasonic Sensor / 2D LiDAR down to exact 3cm contact.
-        """
-        now = time.time()
-        cur_dist = None
-
-        # Prioritize ultrasonic sensor (accurate 2cm ~ 3m)
-        if self.ultrasonic_dist is not None and (now - self.ultrasonic_last_time) < 0.6:
-            cur_dist = self.ultrasonic_dist
-        # Secondary fallback: LiDAR front obstacle distance
-        elif self.lidar_front_dist is not None and (now - self.lidar_last_time) < 0.6:
-            cur_dist = self.lidar_front_dist
-
-        # If sensor feedback is active:
-        if cur_dist is not None:
-            dist_err = cur_dist - self.target_distance
-
-            # Emergency Stop / Final contact reached
-            if cur_dist <= 0.020:
-                self.get_logger().info(f"=== DOCKING COMPLETED (Bumper Safe Stop)! === Dist: {cur_dist*100:.1f}cm")
-                self.state = DockingState.DOCKED
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-                return
-
-            if dist_err <= self.distance_tolerance:
-                self.get_logger().info(f"=== PRECISION DOCKING COMPLETED! === Contact Dist: {cur_dist*100:.1f}cm (Target: {self.target_distance*100:.1f}cm)")
-                self.state = DockingState.DOCKED
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-                return
-
-            # Proportional approach speed
-            v_cmd = max(self.min_linear_vel, min(self.blind_push_speed, 0.4 * dist_err))
-            twist.linear.x = self._clamp_linear(v_cmd)
-
-            # Micro-steering via LiDAR if available
-            if self.enable_lidar_alignment and self.lidar_wall_yaw is not None and (now - self.lidar_last_time) < 0.5:
-                twist.angular.z = self._clamp_angular(-0.4 * self.lidar_wall_yaw)
-            else:
-                twist.angular.z = 0.0
-        else:
-            # Fallback to odometry blind push if sensors temporarily drop out
-            self._handle_blind_push(twist)
-
-    def _handle_blind_push(self, twist: Twist):
-        """Odometry-guided open-loop final drive fallback."""
-        moved = math.hypot(self.current_odom_x - self.blind_start_x, self.current_odom_y - self.blind_start_y)
-        remaining = self.blind_target_dist - moved
-
-        if remaining <= 0.005:
-            self.get_logger().info(f"=== BLIND DOCKING COMPLETED! === Traveled: {moved*100:.1f}cm")
-            self.state = DockingState.DOCKED
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-        else:
-            twist.linear.x = self.blind_push_speed
-            twist.angular.z = 0.0
-
-    def _clamp_linear(self, val: float) -> float:
-        """Clamp linear velocity with deadband."""
-        if abs(val) < 0.005:
-            return 0.0
-        val = max(min(val, self.max_linear_vel), -self.max_linear_vel)
-        if 0.0 < val < self.min_linear_vel:
-            val = self.min_linear_vel
-        elif -self.min_linear_vel < val < 0.0:
-            val = -self.min_linear_vel
-        return val
-
-    def _clamp_angular(self, val: float) -> float:
-        """Clamp angular velocity."""
-        if self.invert_angular:
-            val = -val
-        if abs(val) < 0.02:
-            return 0.0
-        val = max(min(val, self.max_angular_vel), -self.max_angular_vel)
-        if 0.0 < abs(val) < self.min_angular_vel:
-            val = math.copysign(self.min_angular_vel, val)
-        return val
+                cmsg = CompressedImage()
+                cmsg.header.stamp = stamp
+                cmsg.format = 'jpeg'
+                cmsg.data = enc.tobytes()
+                self.debug_image_pub.publish(cmsg)
 
     def _publish_twist(self, twist: Twist):
-        """Publish velocity command."""
         self.cmd_vel_pub.publish(twist)
 
     def _stop_robot(self):
-        """Publish zero velocity repeatedly to halt robot."""
-        zero_twist = Twist()
-        for _ in range(8):
-            self.cmd_vel_pub.publish(zero_twist)
-            time.sleep(0.02)
+        if not rclpy.ok():
+            return
+        z = Twist()
+        for _ in range(5):
+            try:
+                self.cmd_vel_pub.publish(z)
+                time.sleep(0.01)
+            except Exception:
+                break
 
 
 def main(args=None):
@@ -1103,7 +599,7 @@ def main(args=None):
     node = PrecisionDockingNode()
 
     def sig_handler(sig, frame):
-        node.get_logger().info("Emergency stopping Pinky motors...")
+        node.get_logger().info('Stopping robot and shutting down...')
         node._stop_robot()
         try:
             node.destroy_node()
@@ -1118,12 +614,15 @@ def main(args=None):
 
     try:
         rclpy.spin(node)
-    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
-        node.get_logger().info("Shutting down PrecisionDockingNode...")
+    except (KeyboardInterrupt, SystemExit, rclpy.executors.ExternalShutdownException):
+        pass
     finally:
         node._stop_robot()
         if rclpy.ok():
-            node.destroy_node()
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
             rclpy.shutdown()
 
 
