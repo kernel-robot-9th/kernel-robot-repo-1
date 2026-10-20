@@ -14,7 +14,7 @@ amcl:
     lambda_short: 0.1
     laser_likelihood_max_dist: 2.0
     laser_max_range: 100.0
-    laser_min_range: -1.0
+    laser_min_range: 0.18         # 뒤에 단 수레에 맞은 가까운 점은 위치 추정에 쓰지 않음
     laser_model_type: "likelihood_field"
     max_beams: 40
     max_particles: 1000
@@ -163,7 +163,8 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.025
-      footprint: '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
+      # 핑키 몸체(13x13cm) + 뒤에 단 수레(9x13cm). 수레 자리에 찍힌 LiDAR 점은 몸체로 보고 지움
+      footprint: '[[0.065, 0.065], [0.065, -0.065], [-0.17, -0.065], [-0.17, 0.065]]'
       plugins: ["voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
@@ -202,7 +203,8 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_footprint
-      footprint: '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
+      # 핑키 몸체(13x13cm) + 뒤에 단 수레(9x13cm). 수레 자리에 찍힌 LiDAR 점은 몸체로 보고 지움
+      footprint: '[[0.065, 0.065], [0.065, -0.065], [-0.17, -0.065], [-0.17, 0.065]]'
       resolution: 0.025
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
