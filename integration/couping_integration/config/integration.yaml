@@ -4,11 +4,12 @@
   ros__parameters:
     # 양팔 OMX (OMX 팀 omx/scripts/run_act.sh). 비운 값은 run_act.sh 기본값을 씀
     run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
-    policy_path: ''             # 예: ~/outputs/train/bi_omx_act_100ep/checkpoints/100000/pretrained_model
+    policy_path: ~/omx_models/act_120000/pretrained_model   # omx/models/README.md 의 릴리스 모델(120000 스텝)을 풀어 둔 곳
     left_cam: ''                # 예: /dev/video4  (lerobot-find-cameras opencv 로 확인, RealSense 번호와 겹치지 않게)
     right_cam: ''
     head_cam: ''
     task: Packaging the box     # 학습 때 문장과 같게
+    policy_device: cpu          # 추론 장치. GPU(NVIDIA) 노트북이면 cuda, 없으면 cpu (100걸음마다 약 0.6초 멈춤)
     episode_time: 60
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
     fake_seconds: 5.0           # fake:=true 일 때 OMX 대신 기다리는 시간

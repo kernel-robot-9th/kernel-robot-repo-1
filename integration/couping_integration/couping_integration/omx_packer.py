@@ -38,6 +38,7 @@ class OmxPacker(Node):
         self.declare_parameter('fake_seconds', 5.0)
         self.declare_parameter('eval_script', os.path.expanduser('~/il_ws/scripts/eval.sh'))
         self.declare_parameter('policy_path', '')
+        self.declare_parameter('policy_device', '')  # cuda 또는 cpu. 비우면 run_act.sh 기본값(cuda)
         self.declare_parameter('dataset_name', 'close_box')
         self.declare_parameter('task', 'Close the box lid')
         self.declare_parameter('episode_time', 30)
@@ -98,7 +99,8 @@ class OmxPacker(Node):
         if get('run_script'):
             for k, v in (('POLICY_PATH', get('policy_path')), ('LEFT_CAM', get('left_cam')),
                          ('RIGHT_CAM', get('right_cam')), ('HEAD_CAM', get('head_cam')),
-                         ('TASK', get('task')), ('EPISODE_TIME', str(get('episode_time')))):
+                         ('TASK', get('task')), ('EPISODE_TIME', str(get('episode_time'))),
+                         ('POLICY_DEVICE', get('policy_device'))):
                 if v:
                     env[k] = os.path.expanduser(v)
             script = os.path.expanduser(get('run_script'))

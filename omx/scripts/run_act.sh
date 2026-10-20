@@ -8,6 +8,7 @@ RIGHT_CAM=${RIGHT_CAM:-/dev/video6}
 HEAD_CAM=${HEAD_CAM:-/dev/video8}
 EPISODE_TIME=${EPISODE_TIME:-60}
 TASK=${TASK:-"Packaging the box"}
+POLICY_DEVICE=${POLICY_DEVICE:-cuda}   # GPU 없는 PC 는 cpu (100걸음마다 약 0.6초 멈췄다 이어감)
 # ===================
 
 lerobot-record \
@@ -19,7 +20,7 @@ lerobot-record \
 --robot.cameras="{head: {type: opencv, index_or_path: $HEAD_CAM, width: 640, height: 480, fps: 30}}" \
 --robot.id=bi_omx_follower \
 --policy.path=$POLICY_PATH \
---policy.device=cuda \
+--policy.device=$POLICY_DEVICE \
 --dataset.repo_id=local/eval_bi_omx_act_$(date +%m%d_%H%M%S) \
 --dataset.single_task="$TASK" \
 --dataset.num_episodes=1 \
