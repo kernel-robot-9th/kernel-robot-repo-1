@@ -2,7 +2,8 @@
 
 주문은 /couping/order (std_msgs/String, JSON {"id": "001", "items": ["tomato", "salad"]}) 로 받아
 대기열에 넣고 하나씩
-  PICKING(두산이 상자에 담음) → PACKING(OMX 포장) → DELIVERING(핑키가 배송 구역으로 이송) → [RETURNING] → DONE
+  MOVING_TO_PICK(핑키: 주차 구역 → 창고/도킹 구역) → PICKING(두산이 핑키 상자에 담음)
+  → MOVING_TO_PACK(핑키: 창고 → OMX 포장 구역) → PACKING(OMX 포장) → [RETURNING(핑키 주차 구역 복귀)] → DONE
 순서로 진행한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
 주문 입력 터미널: ros2 run couping_integration order
 /couping/start (std_srvs/Trigger) 는 품목 없는 주문(두산에 start)을 넣는다 (신호 확인용).
@@ -51,7 +52,7 @@ class Orchestrator(Node):
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
                               ('nav_action', '/navigate_to_pose'), ('map_frame', 'map'),
-                              ('deliver_pose', [0.0, 0.0, 0.0]), ('home_pose', [0.0, 0.0, 0.0])]:
+                              ('pick_pose', [0.0, 0.0, 0.0]), ('pack_pose', [0.0, 0.0, 0.0]), ('home_pose', [0.0, 0.0, 0.0])]:
             self.declare_parameter(name, default)
 
         self.state = 'IDLE'
@@ -185,13 +186,18 @@ class Orchestrator(Node):
         items = order['items']
         self.publish_order(order, 'started')
         try:
+            if p('enable_pinky'):
+                # 핑키가 주차 구역에서 창고(두산 앞 도킹 구역)로 이동
+                self.move_pinky(order, 'MOVING_TO_PICK', 'pick_pose', 'go:pick')
             if p('enable_picker'):
                 self.set_state('PICKING')
                 self.publish_order(order, 'PICKING')
                 self.run_unit('picker', p('picker_timeout') * max(1, len(items)),
                               'pick:' + ','.join(items) if items else 'start')
-            # 상자는 두산이 담은 자리에서 OMX 가 바로 포장한다 (핑키에 싣고 옮기지 않음, 10/19 변경)
-            if p('manual_transfer') and p('enable_packer'):
+            if p('enable_pinky'):
+                # 두산이 담은 상자를 싣고 핑키가 OMX 포장 구역으로 이동
+                self.move_pinky(order, 'MOVING_TO_PACK', 'pack_pose', 'go:pack')
+            elif p('manual_transfer') and p('enable_packer'):
                 # 핑키 대신 사람이 박스를 OMX 앞으로 옮기고 관리자 화면에서 확인
                 self.confirm_event.clear()
                 self.set_state('WAIT_TRANSFER')
@@ -201,18 +207,8 @@ class Orchestrator(Node):
                 self.set_state('PACKING')
                 self.publish_order(order, 'PACKING')
                 self.run_unit('packer', p('packer_timeout'))
-            if p('enable_pinky'):
-                # 포장 완료 신호를 받은 핑키가 배송 구역으로 이송
-                self.set_state('DELIVERING')
-                self.publish_order(order, 'DELIVERING')
-                if p('signal_only'):
-                    self.run_unit('pinky', p('nav_timeout'))
-                else:
-                    self.navigate(p('deliver_pose'), p('nav_timeout'))
-            if p('enable_pinky') and p('return_home') and not p('signal_only'):
-                self.set_state('RETURNING')
-                self.publish_order(order, 'RETURNING')
-                self.navigate(p('home_pose'), p('nav_timeout'))
+            if p('enable_pinky') and p('return_home'):
+                self.move_pinky(order, 'RETURNING', 'home_pose', 'go:home')
             self.set_state('DONE')
             self.publish_order(order, 'DONE', f'{time.monotonic() - t0:.0f}s')
             self.get_logger().info(f"주문 {order['id']} 완료: {time.monotonic() - t0:.1f}s")
@@ -224,6 +220,15 @@ class Orchestrator(Node):
             stage = self.state
             self.set_state(f'ERROR:{stage}:{e}')
             self.publish_order(order, 'ERROR', f'{stage}: {e}')
+
+    def move_pinky(self, order, state, pose_param, signal_cmd):
+        """핑키 이동 한 단계. 실제: Nav2 목표 전송 후 도착까지 대기 / signal_only: pinky_signal 에 명령만."""
+        self.set_state(state)
+        self.publish_order(order, state)
+        if self.get_parameter('signal_only').value:
+            self.run_unit('pinky', self.get_parameter('nav_timeout').value, signal_cmd)
+        else:
+            self.navigate(self.get_parameter(pose_param).value, self.get_parameter('nav_timeout').value)
 
     def wait_or_stop(self, done, timeout):
         """done() 이 참이 될 때까지 기다린다. 정지 요청 또는 시간 초과면 StageError."""
