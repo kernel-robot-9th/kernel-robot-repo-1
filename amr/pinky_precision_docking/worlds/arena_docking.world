@@ -1,0 +1,3466 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="default">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <!-- Overhead view of the entire 1.5m x 2.25m arena -->
+        <pose>0.60 0.80 2.80 0.0 1.25 1.57</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0.6 0.8 5 0 0 0</pose>
+      <diffuse>0.4 0.4 0.42 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <direction>0 0 -1</direction>
+    </light>
+
+    <!-- ========================================== -->
+    <!-- Office Ceiling Lighting (1m Grid at z = 2.5m) -->
+    <!-- ========================================== -->
+    <light type="point" name="office_light_grid_0">
+      <cast_shadows>false</cast_shadows>
+      <pose>0.10 -0.22 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+    <light type="point" name="office_light_grid_1">
+      <cast_shadows>false</cast_shadows>
+      <pose>1.10 -0.22 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+    <light type="point" name="office_light_grid_2">
+      <cast_shadows>false</cast_shadows>
+      <pose>0.10 0.78 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+    <light type="point" name="office_light_grid_3">
+      <cast_shadows>false</cast_shadows>
+      <pose>1.10 0.78 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+    <light type="point" name="office_light_grid_4">
+      <cast_shadows>false</cast_shadows>
+      <pose>0.10 1.78 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+    <light type="point" name="office_light_grid_5">
+      <cast_shadows>false</cast_shadows>
+      <pose>1.10 1.78 2.50 0 0 0</pose>
+      <diffuse>0.72 0.72 0.75 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>6.0</range>
+        <constant>0.6</constant>
+        <linear>0.15</linear>
+        <quadratic>0.03</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================== -->
+    <!-- Dark Gray Interior Floor (Bounded by Walls) -->
+    <!-- Inner Area: X in [-0.12, 1.32], Y in [-0.30, 1.86] -->
+    <!-- ========================================== -->
+    <model name="arena_interior_floor">
+      <static>true</static>
+      <pose>0.6000 0.7800 0.0005 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.4400 2.1600 0.0010</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.4400 2.1600 0.0010</size></box></geometry>
+          <material>
+            <ambient>0.18 0.18 0.20 1</ambient>
+            <diffuse>0.22 0.23 0.25 1</diffuse>
+            <specular>0.12 0.12 0.12 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Visual Office Ceiling Light Fixtures (2.5m Height, 1m Spacing) -->
+    <model name="office_ceiling_fixtures">
+      <static>true</static>
+      <link name="link">
+        <!-- Fixture 0 -->
+        <visual name="troffer_0">
+          <pose>0.10 -0.22 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+        <!-- Fixture 1 -->
+        <visual name="troffer_1">
+          <pose>1.10 -0.22 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+        <!-- Fixture 2 -->
+        <visual name="troffer_2">
+          <pose>0.10 0.78 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+        <!-- Fixture 3 -->
+        <visual name="troffer_3">
+          <pose>1.10 0.78 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+        <!-- Fixture 4 -->
+        <visual name="troffer_4">
+          <pose>0.10 1.78 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+        <!-- Fixture 5 -->
+        <visual name="troffer_5">
+          <pose>1.10 1.78 2.505 0 0 0</pose>
+          <geometry><box><size>0.30 0.60 0.015</size></box></geometry>
+          <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>0.9 0.9 0.95 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================== -->
+    <!-- Arena Walls (Matching arena_map.yaml)     -->
+    <!-- ========================================== -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0.6000 1.8800 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.5200 0.0400 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.5200 0.0400 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0.6000 -0.3200 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.5200 0.0400 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.5200 0.0400 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Straight Continuous West Wall (Flush from Y=-0.32 to 1.88) -->
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-0.1400 0.7800 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0400 2.2000 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.0400 2.2000 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Straight Continuous East Wall (Flush from Y=-0.32 to 1.88, no notch at packaging) -->
+    <model name="wall_east">
+      <static>true</static>
+      <pose>1.3400 0.7800 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0400 2.2000 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.0400 2.2000 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Interior Dividers -->
+    <model name="wall_shelf1_divider">
+      <static>true</static>
+      <pose>0.1500 1.0800 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5800 0.0400 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5800 0.0400 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Protruding Wall in front of Pinky Parking: Gap Closed to Outer South Wall (Y from -0.30 to +0.36) -->
+    <model name="wall_center_pillar">
+      <static>true</static>
+      <pose>0.5100 0.0300 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0400 0.6600 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.0400 0.6600 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Shelf 2 L-shaped Wall ("ㄱ" shape behind refrigerators connecting to wall_east) -->
+    <!-- Vertical Divider along X=0.8800 from Y=0.8000 to Y=1.3600 -->
+    <model name="wall_shelf2_divider">
+      <static>true</static>
+      <pose>0.8800 1.0800 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0400 0.5600 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.0400 0.5600 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Horizontal Wall behind Refrigerators from X=0.8800 to wall_east (X=1.3400) at Y=0.8200 -->
+    <model name="wall_shelf2_back">
+      <static>true</static>
+      <pose>1.1100 0.8200 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.4600 0.0400 0.2500</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.4600 0.0400 0.2500</size></box></geometry>
+          <material>
+            <ambient>0.7 0.72 0.75 1</ambient>
+            <diffuse>0.7 0.72 0.75 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ======================================================== -->
+    <!-- Shelf 1: Costco-Style Industrial Heavy Pallet Rack      -->
+    <!-- (Steel Blue Posts, Safety Orange Beams, 2-Tier Cargo)    -->
+    <!-- ArUco IDs 6, 7, 8 Mount Directly to Front Load Beam      -->
+    <!-- ======================================================== -->
+        <!-- ======================================================== -->
+    <!-- Shelf 1: 3 Costco Pallet Racks Side-by-Side (Height 0.25m)-->
+    <!-- Matching Outer Wall Height exactly (z in [0.0, 0.25m])   -->
+    <!-- ArUco IDs 6, 7, 8 Mount on Lower Front Load Beams        -->
+    <!-- ======================================================== -->
+    <!-- Shelf 1: 3 Costco Pallet Racks Side-by-Side (Height 0.25m)-->
+    <!-- Matching Outer Wall Height exactly (z in [0.0, 0.25m])   -->
+    <!-- Front beam at X=-0.045, Markers at X=-0.039 (Fully Visible)-->
+    <!-- ======================================================== -->
+    <model name="shelf1_costco_rack_left">
+      <static>true</static>
+      <pose>-0.0800 1.2300 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0700 0.2300 0.2500</size></box></geometry>
+        </collision>
+        <!-- Blue Upright Posts (Height 0.25m) -->
+        <visual name="post_FL"><pose>0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_FR"><pose>0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RL"><pose>-0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RR"><pose>-0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        
+        <!-- === Tier 1 (하단 1단: z=0.068m, ArUco ID 6 부착 빔) === -->
+        <visual name="t1_beam_F"><pose>0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t1_beam_R"><pose>-0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t1_deck"><pose>0 0 -0.045 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t1_box"><pose>0 0 -0.016 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.55 0.40 0.25 1</ambient><diffuse>0.65 0.48 0.32 1</diffuse></material></visual>
+
+        <!-- === Tier 2 (중단 2단: z=0.145m) === -->
+        <visual name="t2_beam_F"><pose>0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t2_beam_R"><pose>-0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t2_deck"><pose>0 0 0.032 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t2_box"><pose>0 0 0.061 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.75 0.75 0.75 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+
+        <!-- === Tier 3 (상단 3단: z=0.235m, 외벽 높이 일치) === -->
+        <visual name="t3_beam_F"><pose>0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t3_beam_R"><pose>-0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t3_deck"><pose>0 0 0.120 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="shelf1_costco_rack_center">
+      <static>true</static>
+      <pose>-0.0800 1.4700 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0700 0.2300 0.2500</size></box></geometry>
+        </collision>
+        <!-- Blue Upright Posts (Height 0.25m) -->
+        <visual name="post_FL"><pose>0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_FR"><pose>0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RL"><pose>-0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RR"><pose>-0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        
+        <!-- === Tier 1 (하단 1단: z=0.068m, ArUco ID 7 부착 빔) === -->
+        <visual name="t1_beam_F"><pose>0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t1_beam_R"><pose>-0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t1_deck"><pose>0 0 -0.045 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t1_box"><pose>0 0 -0.016 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.50 0.36 0.22 1</ambient><diffuse>0.60 0.44 0.28 1</diffuse></material></visual>
+
+        <!-- === Tier 2 (중단 2단: z=0.145m) === -->
+        <visual name="t2_beam_F"><pose>0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t2_beam_R"><pose>-0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t2_deck"><pose>0 0 0.032 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t2_box"><pose>0 0 0.061 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.15 0.28 0.48 1</ambient><diffuse>0.20 0.35 0.58 1</diffuse></material></visual>
+
+        <!-- === Tier 3 (상단 3단: z=0.235m, 외벽 높이 일치) === -->
+        <visual name="t3_beam_F"><pose>0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t3_beam_R"><pose>-0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t3_deck"><pose>0 0 0.120 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="shelf1_costco_rack_right">
+      <static>true</static>
+      <pose>-0.0800 1.7100 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.0700 0.2300 0.2500</size></box></geometry>
+        </collision>
+        <!-- Blue Upright Posts (Height 0.25m) -->
+        <visual name="post_FL"><pose>0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_FR"><pose>0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RL"><pose>-0.0300 -0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        <visual name="post_RR"><pose>-0.0300 0.110 0 0 0 0</pose><geometry><box><size>0.015 0.015 0.25</size></box></geometry><material><ambient>0.05 0.15 0.45 1</ambient><diffuse>0.08 0.25 0.65 1</diffuse><specular>0.3 0.3 0.4 1</specular></material></visual>
+        
+        <!-- === Tier 1 (하단 1단: z=0.068m, ArUco ID 8 부착 빔) === -->
+        <visual name="t1_beam_F"><pose>0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t1_beam_R"><pose>-0.0320 0 -0.057 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t1_deck"><pose>0 0 -0.045 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t1_box"><pose>0 0 -0.016 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.55 0.40 0.25 1</ambient><diffuse>0.65 0.48 0.32 1</diffuse></material></visual>
+
+        <!-- === Tier 2 (중단 2단: z=0.145m) === -->
+        <visual name="t2_beam_F"><pose>0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t2_beam_R"><pose>-0.0320 0 0.020 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t2_deck"><pose>0 0 0.032 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+        <visual name="t2_box"><pose>0 0 0.061 0 0 0</pose><geometry><box><size>0.048 0.16 0.054</size></box></geometry><material><ambient>0.50 0.36 0.22 1</ambient><diffuse>0.60 0.44 0.28 1</diffuse></material></visual>
+
+        <!-- === Tier 3 (상단 3단: z=0.235m, 외벽 높이 일치) === -->
+        <visual name="t3_beam_F"><pose>0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse><specular>0.4 0.2 0.1 1</specular></material></visual>
+        <visual name="t3_beam_R"><pose>-0.0320 0 0.110 0 0 0</pose><geometry><box><size>0.012 0.21 0.024</size></box></geometry><material><ambient>0.6 0.2 0.02 1</ambient><diffuse>0.88 0.32 0.04 1</diffuse></material></visual>
+        <visual name="t3_deck"><pose>0 0 0.120 0 0 0</pose><geometry><box><size>0.055 0.21 0.004</size></box></geometry><material><ambient>0.65 0.65 0.68 1</ambient><diffuse>0.75 0.75 0.78 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ======================================================== -->
+    <!-- Shelf 2: 2 Supermarket Coolers Side-by-Side (Height 0.25m)-->
+    <!-- Flush against wall_shelf2_back (Y=0.84), facing North    -->
+    <!-- Front face at Y=0.8900, Markers at Y=0.8920 (Fully Visible)-->
+    <!-- ======================================================== -->
+    <model name="shelf2_supermarket_cooler_1">
+      <static>true</static>
+      <pose>1.0100 0.8650 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.1800 0.0500 0.2500</size></box></geometry>
+        </collision>
+        <!-- Dark Stainless Steel Exterior (#263238) -->
+        <visual name="back"><pose>0 -0.021 0 0 0 0</pose><geometry><box><size>0.176 0.008 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse><specular>0.3 0.3 0.3 1</specular></material></visual>
+        <visual name="side_L"><pose>-0.086 0 0 0 0 0</pose><geometry><box><size>0.008 0.050 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse></material></visual>
+        <visual name="side_R"><pose>0.086 0 0 0 0 0</pose><geometry><box><size>0.008 0.050 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse></material></visual>
+        <visual name="kickplate"><pose>0 0 -0.105 0 0 0</pose><geometry><box><size>0.176 0.050 0.040</size></box></geometry><material><ambient>0.10 0.10 0.12 1</ambient><diffuse>0.14 0.14 0.16 1</diffuse></material></visual>
+        <visual name="canopy"><pose>0 0 0.110 0 0 0</pose><geometry><box><size>0.176 0.050 0.030</size></box></geometry><material><ambient>0.15 0.18 0.22 1</ambient><diffuse>0.20 0.24 0.28 1</diffuse></material></visual>
+        <!-- Illuminated Cooler Header Sign -->
+        <visual name="top_light"><pose>0 0.024 0.110 0 0 0</pose><geometry><box><size>0.160 0.003 0.020</size></box></geometry><material><ambient>0.7 0.9 1 1</ambient><diffuse>0.85 0.95 1 1</diffuse><emissive>0.7 0.9 1 1</emissive></material></visual>
+        <!-- White Insulated Showcase Interior -->
+        <visual name="lining"><pose>0 -0.015 0 0 0 0</pose><geometry><box><size>0.164 0.005 0.180</size></box></geometry><material><ambient>0.85 0.88 0.90 1</ambient><diffuse>0.92 0.94 0.96 1</diffuse></material></visual>
+        <!-- Lower Price Rail (Backing for ID 4 at Y=0.892m) -->
+        <visual name="price_rail"><pose>0 0.024 -0.057 0 0 0</pose><geometry><box><size>0.176 0.004 0.035</size></box></geometry><material><ambient>0.3 0.3 0.35 1</ambient><diffuse>0.4 0.4 0.45 1</diffuse><specular>0.5 0.5 0.5 1</specular></material></visual>
+        <!-- Glass Shelf & Dairy Products -->
+        <visual name="glass_shelf"><pose>0 0.002 0.020 0 0 0</pose><geometry><box><size>0.164 0.035 0.006</size></box></geometry><material><ambient>0.7 0.85 0.9 0.8</ambient><diffuse>0.75 0.90 0.95 0.8</diffuse></material></visual>
+        <visual name="dairy_1"><pose>0.02 0.002 -0.030 0 0 0</pose><geometry><box><size>0.060 0.030 0.075</size></box></geometry><material><ambient>0.10 0.25 0.65 1</ambient><diffuse>0.15 0.35 0.75 1</diffuse></material></visual>
+        <visual name="drink_1"><pose>-0.02 0.002 0.060 0 0 0</pose><geometry><box><size>0.070 0.025 0.060</size></box></geometry><material><ambient>0.70 0.40 0.05 1</ambient><diffuse>0.95 0.55 0.10 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="shelf2_supermarket_cooler_2">
+      <static>true</static>
+      <pose>1.1900 0.8650 0.1250 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.1800 0.0500 0.2500</size></box></geometry>
+        </collision>
+        <!-- Dark Stainless Steel Exterior (#263238) -->
+        <visual name="back"><pose>0 -0.021 0 0 0 0</pose><geometry><box><size>0.176 0.008 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse><specular>0.3 0.3 0.3 1</specular></material></visual>
+        <visual name="side_L"><pose>-0.086 0 0 0 0 0</pose><geometry><box><size>0.008 0.050 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse></material></visual>
+        <visual name="side_R"><pose>0.086 0 0 0 0 0</pose><geometry><box><size>0.008 0.050 0.250</size></box></geometry><material><ambient>0.12 0.14 0.16 1</ambient><diffuse>0.16 0.18 0.22 1</diffuse></material></visual>
+        <visual name="kickplate"><pose>0 0 -0.105 0 0 0</pose><geometry><box><size>0.176 0.050 0.040</size></box></geometry><material><ambient>0.10 0.10 0.12 1</ambient><diffuse>0.14 0.14 0.16 1</diffuse></material></visual>
+        <visual name="canopy"><pose>0 0 0.110 0 0 0</pose><geometry><box><size>0.176 0.050 0.030</size></box></geometry><material><ambient>0.15 0.18 0.22 1</ambient><diffuse>0.20 0.24 0.28 1</diffuse></material></visual>
+        <!-- Illuminated Cooler Header Sign -->
+        <visual name="top_light"><pose>0 0.024 0.110 0 0 0</pose><geometry><box><size>0.160 0.003 0.020</size></box></geometry><material><ambient>0.7 0.9 1 1</ambient><diffuse>0.85 0.95 1 1</diffuse><emissive>0.7 0.9 1 1</emissive></material></visual>
+        <!-- White Insulated Showcase Interior -->
+        <visual name="lining"><pose>0 -0.015 0 0 0 0</pose><geometry><box><size>0.164 0.005 0.180</size></box></geometry><material><ambient>0.85 0.88 0.90 1</ambient><diffuse>0.92 0.94 0.96 1</diffuse></material></visual>
+        <!-- Lower Price Rail (Backing for ID 3 at Y=0.892m) -->
+        <visual name="price_rail"><pose>0 0.024 -0.057 0 0 0</pose><geometry><box><size>0.176 0.004 0.035</size></box></geometry><material><ambient>0.3 0.3 0.35 1</ambient><diffuse>0.4 0.4 0.45 1</diffuse><specular>0.5 0.5 0.5 1</specular></material></visual>
+        <!-- Glass Shelf & Dairy Products -->
+        <visual name="glass_shelf"><pose>0 0.002 0.020 0 0 0</pose><geometry><box><size>0.164 0.035 0.006</size></box></geometry><material><ambient>0.7 0.85 0.9 0.8</ambient><diffuse>0.75 0.90 0.95 0.8</diffuse></material></visual>
+        <visual name="dairy_2"><pose>-0.02 0.002 -0.030 0 0 0</pose><geometry><box><size>0.060 0.030 0.075</size></box></geometry><material><ambient>0.60 0.10 0.10 1</ambient><diffuse>0.80 0.15 0.15 1</diffuse></material></visual>
+        <visual name="drink_2"><pose>0.02 0.002 0.060 0 0 0</pose><geometry><box><size>0.070 0.025 0.060</size></box></geometry><material><ambient>0.25 0.60 0.75 1</ambient><diffuse>0.35 0.75 0.88 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ======================================================== -->
+    <!-- ROBOTIS OMX-AI Manipulators (Packaging Workstation)     -->
+    <!-- Plate Removed: Mounted Directly on the Floor at z = 0    -->
+    <!-- Facing West into Arena Docking Spot                      -->
+    <!-- ======================================================== -->
+    <model name="omx_manipulator_top">
+      <static>true</static>
+      <pose>1.2600 0.4400 0.0000 0 0 3.1416</pose>
+      <link name="link">
+        <collision name="base_collision">
+          <pose>0.01 0 0.025 0 0 0</pose>
+          <geometry><box><size>0.09 0.09 0.05</size></box></geometry>
+        </collision>
+        <visual name="base_visual">
+          <pose>0.00000 0.00000 0.00000 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.20 0.20 0.24 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="link1_visual">
+          <pose>-0.01125 0.00000 0.03400 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link2_visual">
+          <pose>-0.01125 0.00000 0.09750 0 -0.45000 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link3_visual">
+          <pose>-0.02310 0.00000 0.21744 0 0.25000 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link4_visual">
+          <pose>0.13387 0.00000 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
+          <material><ambient>0.2 0.2 0.24 1</ambient><diffuse>0.25 0.25 0.30 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="link5_visual">
+          <pose>0.16257 0.00000 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="gripper_motorized_visual">
+          <pose>0.19207 0.00750 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="gripper_gear_visual">
+          <pose>0.19207 -0.01080 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROBOTIS OMX-AI (South Packaging Workstation) -->
+    <model name="omx_manipulator_bottom">
+      <static>true</static>
+      <pose>1.2600 0.0600 0.0000 0 0 3.1416</pose>
+      <link name="link">
+        <collision name="base_collision">
+          <pose>0.01 0 0.025 0 0 0</pose>
+          <geometry><box><size>0.09 0.09 0.05</size></box></geometry>
+        </collision>
+        <visual name="base_visual">
+          <pose>0.00000 0.00000 0.00000 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.20 0.20 0.24 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="link1_visual">
+          <pose>-0.01125 0.00000 0.03400 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link2_visual">
+          <pose>-0.01125 0.00000 0.09750 0 -0.45000 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link3_visual">
+          <pose>-0.02310 0.00000 0.21744 0 0.25000 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="link4_visual">
+          <pose>0.13387 0.00000 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
+          <material><ambient>0.2 0.2 0.24 1</ambient><diffuse>0.25 0.25 0.30 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="link5_visual">
+          <pose>0.16257 0.00000 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
+          <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
+        </visual>
+        <visual name="gripper_motorized_visual">
+          <pose>0.19207 0.00750 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+        <visual name="gripper_gear_visual">
+          <pose>0.19207 -0.01080 0.17736 0 0 0</pose>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================== -->
+    <!-- ArUco Marker DICT_5X5_250 ID 6 -->
+    <model name="aruco_5x5_id6_shelf1_left">
+      <static>true</static>
+      <pose>-0.0390 1.2300 0.0680 0.0000 0.0000 3.1416</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_1">
+          <pose>-0.0008 0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_4">
+          <pose>-0.0008 -0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_1">
+          <pose>-0.0008 0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_2">
+          <pose>-0.0008 0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_2">
+          <pose>-0.0008 0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_4">
+          <pose>-0.0008 -0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_1">
+          <pose>-0.0008 0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_4">
+          <pose>-0.0008 -0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_5">
+          <pose>-0.0008 -0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ArUco Marker DICT_5X5_250 ID 7 -->
+    <model name="aruco_5x5_id7">
+      <static>true</static>
+      <pose>-0.0390 1.4700 0.0680 0.0000 0.0000 3.1416</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_1">
+          <pose>-0.0008 0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_5">
+          <pose>-0.0008 -0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_1">
+          <pose>-0.0008 0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_2">
+          <pose>-0.0008 0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_4">
+          <pose>-0.0008 -0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_5">
+          <pose>-0.0008 -0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_1">
+          <pose>-0.0008 0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_2">
+          <pose>-0.0008 0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_4">
+          <pose>-0.0008 -0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_1">
+          <pose>-0.0008 0.01714 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_2">
+          <pose>-0.0008 0.00857 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_3">
+          <pose>-0.0008 0.00000 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_1">
+          <pose>-0.0008 0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_3">
+          <pose>-0.0008 0.00000 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ArUco Marker DICT_5X5_250 ID 8 -->
+    <model name="aruco_5x5_id8_shelf1_right">
+      <static>true</static>
+      <pose>-0.0390 1.7100 0.0680 0.0000 0.0000 3.1416</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_2">
+          <pose>-0.0008 0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_3">
+          <pose>-0.0008 0.00000 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_4">
+          <pose>-0.0008 -0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_5">
+          <pose>-0.0008 -0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_3">
+          <pose>-0.0008 0.00000 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_5">
+          <pose>-0.0008 -0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_3">
+          <pose>-0.0008 0.00000 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_4">
+          <pose>-0.0008 -0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_5">
+          <pose>-0.0008 -0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_1">
+          <pose>-0.0008 0.01714 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_3">
+          <pose>-0.0008 0.00000 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_4">
+          <pose>-0.0008 -0.00857 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_2">
+          <pose>-0.0008 0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_3">
+          <pose>-0.0008 0.00000 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_5">
+          <pose>-0.0008 -0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ArUco Marker DICT_5X5_250 ID 4 -->
+    <model name="aruco_5x5_id4">
+      <static>true</static>
+      <pose>1.0210 0.8920 0.0680 0.0000 0.0000 -1.5708</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_3">
+          <pose>-0.0008 0.00000 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_5">
+          <pose>-0.0008 -0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_4">
+          <pose>-0.0008 -0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_1">
+          <pose>-0.0008 0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_4">
+          <pose>-0.0008 -0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_1">
+          <pose>-0.0008 0.01714 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_3">
+          <pose>-0.0008 0.00000 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_4">
+          <pose>-0.0008 -0.00857 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_1">
+          <pose>-0.0008 0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_2">
+          <pose>-0.0008 0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_4">
+          <pose>-0.0008 -0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_5">
+          <pose>-0.0008 -0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ArUco Marker DICT_5X5_250 ID 3 -->
+    <model name="aruco_5x5_id3_shelf2_left">
+      <static>true</static>
+      <pose>1.1710 0.8920 0.0680 0.0000 0.0000 -1.5708</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_2">
+          <pose>-0.0008 0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_3">
+          <pose>-0.0008 0.00000 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_4">
+          <pose>-0.0008 -0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_5">
+          <pose>-0.0008 -0.01714 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_1">
+          <pose>-0.0008 0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_2">
+          <pose>-0.0008 0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_1">
+          <pose>-0.0008 0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_2">
+          <pose>-0.0008 0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_4">
+          <pose>-0.0008 -0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_1">
+          <pose>-0.0008 0.01714 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_2">
+          <pose>-0.0008 0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ArUco Marker DICT_5X5_250 ID 5 -->
+    <model name="aruco_5x5_id5">
+      <static>true</static>
+      <pose>1.3190 0.2430 0.0680 0.0000 0.0000 0.0000</pose>
+      <link name="link">
+        <visual name="white_bg">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box><size>0.002 0.07714 0.07714</size></box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0.92 0.92 0.92 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_0">
+          <pose>-0.0008 0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_1">
+          <pose>-0.0008 0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_2">
+          <pose>-0.0008 0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_3">
+          <pose>-0.0008 0.00000 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_4">
+          <pose>-0.0008 -0.00857 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_5">
+          <pose>-0.0008 -0.01714 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_0_6">
+          <pose>-0.0008 -0.02571 0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_0">
+          <pose>-0.0008 0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_4">
+          <pose>-0.0008 -0.00857 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_1_6">
+          <pose>-0.0008 -0.02571 0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_0">
+          <pose>-0.0008 0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_1">
+          <pose>-0.0008 0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_3">
+          <pose>-0.0008 0.00000 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_4">
+          <pose>-0.0008 -0.00857 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_5">
+          <pose>-0.0008 -0.01714 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_2_6">
+          <pose>-0.0008 -0.02571 0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_0">
+          <pose>-0.0008 0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_1">
+          <pose>-0.0008 0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_2">
+          <pose>-0.0008 0.00857 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_3">
+          <pose>-0.0008 0.00000 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_5">
+          <pose>-0.0008 -0.01714 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_3_6">
+          <pose>-0.0008 -0.02571 0.00000 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_0">
+          <pose>-0.0008 0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_1">
+          <pose>-0.0008 0.01714 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_2">
+          <pose>-0.0008 0.00857 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_3">
+          <pose>-0.0008 0.00000 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_4">
+          <pose>-0.0008 -0.00857 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_4_6">
+          <pose>-0.0008 -0.02571 -0.00857 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_0">
+          <pose>-0.0008 0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_1">
+          <pose>-0.0008 0.01714 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_4">
+          <pose>-0.0008 -0.00857 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_5_6">
+          <pose>-0.0008 -0.02571 -0.01714 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_0">
+          <pose>-0.0008 0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_1">
+          <pose>-0.0008 0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_2">
+          <pose>-0.0008 0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_3">
+          <pose>-0.0008 0.00000 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_4">
+          <pose>-0.0008 -0.00857 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_5">
+          <pose>-0.0008 -0.01714 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+        <visual name="cell_6_6">
+          <pose>-0.0008 -0.02571 -0.02571 0 0 0</pose>
+          <geometry>
+            <box><size>0.001 0.00866 0.00866</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================== -->
+    <!-- Home Parking Lot (Bays, 'P' Markings, Parked Pinkys) -->
+    <!-- ========================================== -->
+    <!-- Home Parking Lot Floor Bays & 'P' Markings -->
+    <model name="home_parking_bays">
+      <static>true</static>
+      <pose>0.1000 0.0000 0.0010 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>0.28 0.64</size>
+            </plane>
+          </geometry>
+          <material>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0.2 0.2 0.2 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/img/parking_bays.png</albedo_map>
+              </metal>
+            </pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Parked Pinky Pro (Left Bay / Slot 1) -->
+    <model name="pinky_parked_left">
+      <static>true</static>
+      <pose>0.1200 0.2000 0.0000 0 0 0</pose>
+      <link name="link">
+        <visual name="base">
+          <pose>0 0 0.028 0 0 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="screen">
+          <pose>-0.0385 0 0.098 0 0.2618 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="lidar">
+          <pose>0 0 0.076 0 0 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="wheel_left">
+          <pose>0 0.04055 0.028 0 0 1.5708</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="wheel_right">
+          <pose>0 -0.04055 0.028 0 0 -1.5708</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Parked Pinky Pro (Right Bay / Slot 3) -->
+    <model name="pinky_parked_right">
+      <static>true</static>
+      <pose>0.1200 -0.2000 0.0000 0 0 0</pose>
+      <link name="link">
+        <visual name="base">
+          <pose>0 0 0.028 0 0 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="screen">
+          <pose>-0.0385 0 0.098 0 0.2618 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="lidar">
+          <pose>0 0 0.076 0 0 0</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="wheel_left">
+          <pose>0 0.04055 0.028 0 0 1.5708</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+        </visual>
+        <visual name="wheel_right">
+          <pose>0 -0.04055 0.028 0 0 -1.5708</pose>
+          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>
