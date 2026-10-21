@@ -56,7 +56,7 @@ class PickFailed(NotPickable):
 
 
 # ---------- 인식 ----------
-def detect(node, shelf_ymin, timeout=20.0):
+def detect(node, shelf_ymin, timeout=120.0):
     cli = node.create_client(Trigger, '/couping/vision/detect')
     if not cli.wait_for_service(timeout_sec=5.0):
         raise PickError('비전 노드가 없습니다 (ros2 launch couping vision.launch.py)')

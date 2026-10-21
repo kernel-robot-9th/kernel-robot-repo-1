@@ -22,7 +22,7 @@
     enable_pinky: true
     enable_packer: true
     return_home: false          # 포장 구역까지 간 뒤 home_pose(주차 구역)로 복귀할지
-    picker_timeout: 240.0       # 품목 하나당 (주문 품목 수만큼 곱함). 카메라 확인 후 재시도(최대 3번, 한 번 약 65초) 포함
+    picker_timeout: 600.0       # 품목 하나당 (주문 품목 수만큼 곱함). 카메라 확인 후 재시도(최대 3번, 한 번 약 65초) 포함
     nav_timeout: 120.0
     packer_timeout: 120.0       # episode_time(60) + 카메라·모델 로딩 여유
     pause_on_error: false       # false: 실패한 주문은 실패로 남기고 다음 주문을 바로 진행 (true: 멈추고 resume 대기)

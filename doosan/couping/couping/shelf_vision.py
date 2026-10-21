@@ -78,15 +78,25 @@ class RealSense:
         self.scale = profile.get_device().first_depth_sensor().get_depth_scale()
         self.align = rs.align(rs.stream.color)
         self.intr = None
+        self.timeout = 8000 if self.usb2 else 2000  # USB 2 는 프레임이 띄엄띄엄 와서 길게 기다림 (10/21)
         self.name = profile.get_device().get_info(rs.camera_info.name) + (
             ' [USB 2: 640x480@15 저해상도 모드]' if self.usb2 else '')
 
     def flush(self, n=2):
         for _ in range(n):  # 큐에 쌓인 지난 프레임 버리기
-            self.pipe.wait_for_frames(2000)
+            try:
+                self.pipe.wait_for_frames(self.timeout)
+            except RuntimeError:
+                if not self.usb2:
+                    raise
 
     def grab(self):
-        frames = self.align.process(self.pipe.wait_for_frames(2000))
+        try:
+            frames = self.align.process(self.pipe.wait_for_frames(self.timeout))
+        except RuntimeError:
+            if self.usb2:  # 안 온 프레임은 건너뛰고 들어온 것만 씀
+                return None
+            raise
         cf, df = frames.get_color_frame(), frames.get_depth_frame()
         if not cf or not df:
             return None
