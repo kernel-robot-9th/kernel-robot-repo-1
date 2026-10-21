@@ -32,6 +32,6 @@
     map_frame: map
     # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
     # 지도 좌표 [x(m), y(m), yaw(rad)]. integration/tools/pinky_waypoint.py --save <이름> 으로 RViz 에서 찍어 저장
-    pick_pose: [0.0, 0.0, 0.0]     # 창고(두산 앞 도킹 구역): 두산이 상자에 담는 위치
-    pack_pose: [0.0, 0.0, 0.0]     # OMX 포장 구역
-    home_pose: [0.0, 0.0, 0.0]     # 주차 구역 (return_home: true 일 때 복귀)
+    pick_pose: [0.110, 1.550, 0.000]     # 창고(두산 앞 도킹 구역): 두산이 상자에 담는 위치
+    pack_pose: [1.150, 0.290, 0.094]     # OMX 포장 구역
+    home_pose: [0.110, 0.090, 0.000]     # 주차 구역 (return_home: true 일 때 복귀)

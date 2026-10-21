@@ -371,6 +371,12 @@ class ShelfVision(Node):
         """여러 장 찍어 인식 → (성공 여부, 결과 dict 또는 실패 이유).
         깊이가 말이 안 되게 멀면(카메라가 다시 붙은 뒤 생기던 문제) 카메라를 다시 열고 한 번 더 인식."""
         ok, out = self.detect_once()
+        if not ok and isinstance(out, str) and out.startswith('카메라'):
+            # 카메라가 순간적으로 끊김(USB 허브 등) → 다시 열고 한 번 더
+            self.get_logger().warn(f'{out} → 카메라를 다시 열고 한 번 더 인식')
+            time.sleep(1.0)
+            self.open_camera()
+            ok, out = self.detect_once()
         if ok and self.depth_broken(out['items']):
             self.drop_camera(f"깊이 이상 (컵 거리 중앙값 > {self.p('max_depth')} m) → 카메라 다시 열기")
             self.open_camera()
