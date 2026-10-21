@@ -8,7 +8,9 @@
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
     # 로봇·카메라 없이 주문 신호 흐름만 시험
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
-핑키 쪽 bringup·navigation 은 핑키에서 따로 실행합니다.
+핑키 bringup 은 핑키에서, Nav2(pinky_navigation bringup_arena) 는 따로 실행합니다.
+정밀 도킹 노드(pinky_precision_docking)는 pinky:=true docking:=true(기본) 일 때 여기서 함께 띄웁니다
+(핑키 카메라 /camera/image_raw/compressed 와 /scan 을 Wi-Fi 로 받음).
 """
 import os
 
@@ -54,6 +56,7 @@ def generate_launch_description():
         DeclareLaunchArgument('signal_only', default_value='false',
                               description='신호만 주고받기: 두산은 관절 각도, OMX 는 모터 위치만 읽고, 핑키는 주행 대신 pinky_signal 응답'),
         DeclareLaunchArgument('pinky', default_value='true', description='핑키 주행 단계 포함 (false 면 건너뜀)'),
+        DeclareLaunchArgument('docking', default_value='true', description='핑키 ArUco 정밀 도킹 (false 면 Nav2 좌표까지만)'),
         DeclareLaunchArgument('fake', default_value='false', description='두산 picker · OMX 를 로봇·카메라 없이 흉내 (신호 흐름 시험)'),
         DeclareLaunchArgument('manual_transfer', default_value='false',
                               description='핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면에서 확인 (pinky:=false 와 함께)'),
@@ -73,6 +76,11 @@ def generate_launch_description():
                 get_package_share_directory('couping'), 'launch', 'vision.launch.py')),
             launch_arguments={'config': doosan_config}.items())],
             condition=IfCondition(LaunchConfiguration('vision'))),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory('pinky_precision_docking'), 'launch', 'precision_docking.launch.py')),
+            condition=IfCondition(PythonExpression(["'", LaunchConfiguration('pinky'), "' == 'true' and '",
+                                                    LaunchConfiguration('docking'), "' == 'true'"]))),
         Node(package='couping', executable='doosan_picker', namespace=LaunchConfiguration('robot_name'),
              parameters=[doosan_config, {'robot_model': LaunchConfiguration('model'),
                                   'signal_only': signal_only, 'fake': fake}],
@@ -88,6 +96,7 @@ def generate_launch_description():
              parameters=[config, {'signal_only': signal_only,
                                   'enable_picker': ParameterValue(doosan, value_type=bool),
                                   'enable_pinky': ParameterValue(LaunchConfiguration('pinky'), value_type=bool),
+                                  'docking': ParameterValue(LaunchConfiguration('docking'), value_type=bool),
                                   'enable_packer': ParameterValue(omx, value_type=bool),
                                   'manual_transfer': ParameterValue(LaunchConfiguration('manual_transfer'), value_type=bool)}]),
     ])

@@ -30,7 +30,7 @@ from std_srvs.srv import Trigger
 from couping import catalog
 
 # 오케스트레이터 상태 → 고객에게 보이는 단계 (0 주문 확인 … 4 배송 완료)
-STAGE_OF = {'queued': 0, 'started': 0, 'MOVING_TO_PICK': 1, 'PICKING': 1, 'WAIT_TRANSFER': 1,
+STAGE_OF = {'queued': 0, 'started': 0, 'MOVING_TO_PICK': 1, 'DOCKING': 1, 'PICKING': 1, 'UNDOCKING': 1, 'WAIT_TRANSFER': 1,
             'MOVING_TO_PACK': 2, 'PACKING': 2, 'RETURNING': 3, 'DONE': 4}
 PROGRESS_RE = re.compile(r'(\d+)/(\d+) .*?\((\w+)\) (.*)')
 

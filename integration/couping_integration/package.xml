@@ -16,6 +16,8 @@
   <exec_depend>rcl_interfaces</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>action_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>pinky_precision_docking</exec_depend>
   <exec_depend>dsr_msgs2</exec_depend>
   <exec_depend>dsr_bringup2</exec_depend>
   <exec_depend>launch</exec_depend>

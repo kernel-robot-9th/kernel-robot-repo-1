@@ -1,7 +1,8 @@
 """RViz 에서 찍은 위치를 핑키 목표 좌표로 저장.
 
   python3 pinky_waypoint.py            # 찍을 때마다 좌표만 출력
-  python3 pinky_waypoint.py --save pick_pose   # 창고(두산 앞 도킹 구역)
+  python3 pinky_waypoint.py --save zone_a_pose  # 선반 1번(7번 마커) 도킹 진입
+  python3 pinky_waypoint.py --save zone_b_pose  # 선반 2번(4번 마커) 도킹 진입
   python3 pinky_waypoint.py --save pack_pose   # OMX 포장 구역
   python3 pinky_waypoint.py --save home_pose   # 주차 구역
 
@@ -32,7 +33,7 @@ def save(name, x, y, yaw):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--save', choices=('pick_pose', 'pack_pose', 'home_pose'))
+    ap.add_argument('--save', choices=('zone_a_pose', 'zone_b_pose', 'pack_pose', 'home_pose'))
     args = ap.parse_args()
     rclpy.init()
     node = rclpy.create_node('pinky_waypoint')

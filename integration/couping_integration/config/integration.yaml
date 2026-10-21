@@ -30,8 +30,21 @@
     transfer_timeout: 600.0
     nav_action: /navigate_to_pose
     map_frame: map
-    # 맵 좌표 [x(m), y(m), yaw(rad)]. TODO: RViz 의 2D Goal Pose 로 확인한 값으로 교체
-    # 지도 좌표 [x(m), y(m), yaw(rad)]. integration/tools/pinky_waypoint.py --save <이름> 으로 RViz 에서 찍어 저장
-    pick_pose: [0.110, 1.550, 0.000]     # 창고(두산 앞 도킹 구역): 두산이 상자에 담는 위치
-    pack_pose: [1.150, 0.290, 0.094]     # OMX 포장 구역
-    home_pose: [0.110, 0.090, 0.000]     # 주차 구역 (return_home: true 일 때 복귀)
+    # 정밀 도킹 (amr/pinky_precision_docking). false 면 Nav2 좌표까지만 가고 도킹·후진은 안 함
+    docking: true
+    dock_timeout: 120.0
+    undock_speed: 0.05          # 후진 속도 (m/s)
+    # 지도 좌표 [x(m), y(m), yaw(rad)] = 도킹 진입 좌표 (팀 run_arena_mission.py WAYPOINTS 와 같은 값)
+    # 창고 구역: 주문 품목이 있는 구역만 차례로 들름. 구역별 품목은 *_items
+    zone_a_marker: 7                     # 선반 1번(아라비아 숫자 8·9·7) 중 7번
+    zone_a_pose: [0.600, 1.470, 3.1416]
+    zone_a_undock: 0.55                  # 작업 뒤 후진 거리 (m)
+    zone_a_items: [bath_tissue, tide, paper_towel]
+    zone_b_marker: 4                     # 선반 2번(로마 숫자 구역) 중 4번
+    zone_b_pose: [1.110, 1.500, -1.5708]
+    zone_b_undock: 0.60
+    zone_b_items: [tomato, carrot, salad]
+    pack_marker: 5                       # OMX 포장 구역
+    pack_pose: [0.724, 0.243, 0.107]
+    pack_undock: 0.35
+    home_pose: [0.120, 0.000, 0.000]     # 주차 구역 (return_home: true 일 때 복귀)
