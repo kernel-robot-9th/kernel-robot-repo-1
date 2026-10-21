@@ -38,3 +38,17 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 - OMX 는 OMX 팀 `omx/scripts/run_act.sh` 를 실행한다. 정책 경로·카메라는 `config/integration.yaml` 의 `omx_packer` 에서 (비우면 스크립트 기본값)
 - 핑키·OMX 단계를 켜려면 `pinky:=true`, `omx:=true` 와 `config/integration.yaml` 의 `pick_pose`(창고), `pack_pose`(포장 구역), `home_pose`(주차 구역), OMX 정책 경로를 채운다
 - **실제 모드와 fake 모드를 같은 `ROS_DOMAIN_ID` 에서 동시에 띄우지 말 것** (두 피킹 노드가 같은 주문을 받아 실제 로봇이 움직임)
+
+## 10/21 전체 연동 실행 순서 (두산 + 핑키 pinky-26116 + 정밀 도킹)
+
+모든 노트북 터미널에서 먼저 `source integration/tools/dds_env.sh` (도메인 30, FastDDS. 노트북에서는 `~/couping_ws/dds_env.sh` 로 복사해 씀).
+핑키 pinky-26116 은 CycloneDDS 가 없어 노트북도 FastDDS 를 써야 데이터가 들어옴.
+
+1. 핑키(SSH): 도메인 30 으로 `pinky_bringup bringup_robot.launch.xml` + `python3 ~/pinky_camera_node.py` (도킹용 `/camera/image_raw/compressed`)
+2. 두산: `ros2 launch dsr_bringup2 dsr_bringup2_rviz.launch.py mode:=real host:=110.120.1.13 model:=e0509 remap_tf:=true`
+   - **remap_tf:=true 필수**: 두산과 핑키가 둘 다 `base_link` 프레임을 써서, 안 붙이면 TF 가 꼬여 Nav2 가 위치를 못 잡음 (두산 TF 는 /dsr01/tf 로 감)
+3. 그리퍼: `ros2 run dsr_gripper gripper_service_a`
+4. Nav2: `ros2 launch pinky_navigation bringup_arena.launch.xml` + `nav2_view.launch.xml` → RViz 에서 2D Pose Estimate
+5. 연동: `ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=true docking:=true vision:=true` (OMX 없으면 `omx:=false`)
+   - 정밀 도킹 노드(main 의 v6.0)는 이 launch 가 노트북에서 띄움
+   - 구역: 선반1 7번 마커(휴지·세제·키친타월), 선반2 4번 마커(토마토·당근·샐러드), 포장 5번 마커. `config/integration.yaml` 의 `zone_*`
