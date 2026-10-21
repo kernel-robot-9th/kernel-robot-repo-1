@@ -69,7 +69,7 @@ class RealSense:
             if not usb2_ok:
                 raise UsbTooSlow(f"USB {usb} 로 연결됨")
             # USB 2 에서는 1280x720 컬러+깊이가 안 됨 → 640x480@30 (10/19 확인: 약 18fps, 깊이 유효 72%)
-            width, height, fps, self.usb2 = 640, 480, 30, True
+            width, height, fps, self.usb2 = 640, 480, 15, True  # 30fps 는 USB 2 직결 포트에서 프레임이 자주 끊김 (10/21)
         self.pipe = rs.pipeline()
         cfg = rs.config()
         cfg.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
@@ -79,7 +79,7 @@ class RealSense:
         self.align = rs.align(rs.stream.color)
         self.intr = None
         self.name = profile.get_device().get_info(rs.camera_info.name) + (
-            ' [USB 2: 640x480 저해상도 모드]' if self.usb2 else '')
+            ' [USB 2: 640x480@15 저해상도 모드]' if self.usb2 else '')
 
     def flush(self, n=2):
         for _ in range(n):  # 큐에 쌓인 지난 프레임 버리기
