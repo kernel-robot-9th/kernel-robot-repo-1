@@ -77,7 +77,7 @@ DOCKING_CHIME_NOTES: List[Tuple[float, float]] = [
     (523.25, 0.12),  # C5 (도)
     (659.25, 0.12),  # E5 (미)
     (783.99, 0.12),  # G5 (솔)
-    (1046.50, 0.35), # C6 (높은 도, 페이드아웃)
+    (1046.50, 0.15), # C6 (높은 도, 깔끔하게 마무리)
 ]
 
 # 2. 후진 경고음: 표준 산업용 AGV/지게차 단일 비프음 ('삐~ 삐~', 1000Hz)
@@ -200,7 +200,7 @@ class SoundManager:
         # Also play via official Pinky Pro hardware buzzer if directly running on robot
         if self._pinky_hw_buzzer:
             def _play_hw():
-                for freq, dur in [(523, 0.12), (659, 0.12), (784, 0.12), (1046, 0.35)]:
+                for freq, dur in [(523, 0.12), (659, 0.12), (784, 0.12), (1046, 0.15)]:
                     try:
                         self._pinky_hw_buzzer.set_buzzer_freq(freq)
                         self._pinky_hw_buzzer.set_buzzer_duty(50)
