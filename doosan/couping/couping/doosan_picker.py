@@ -32,7 +32,7 @@ from std_msgs.msg import String
 from couping import catalog, pick_core
 from couping.dsr_util import connect
 
-PARAMS = ('open', 'release', 'force', 'vel', 'vel_slow', 'velj', 'approach', 'depth', 'dz', 'lift', 'retries')
+PARAMS = ('open', 'release', 'force', 'grip_wait', 'vel', 'vel_slow', 'velj', 'approach', 'depth', 'dz', 'lift', 'retries')
 RESULT = {'placed': '상자에 놓음', 'returned': '진열대에 도로 놓음', 'holding': '들고 대기'}
 
 
