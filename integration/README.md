@@ -52,3 +52,17 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 5. 연동: `ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=true docking:=true vision:=true` (OMX 없으면 `omx:=false`)
    - 정밀 도킹 노드(main 의 v6.0)는 이 launch 가 노트북에서 띄움
    - 구역: 선반1 7번 마커(휴지·세제·키친타월), 선반2 4번 마커(토마토·당근·샐러드), 포장 5번 마커. `config/integration.yaml` 의 `zone_*`
+
+## 10/22 팀원 핑키 미션 코드 그대로 쓰는 방식 (권장)
+
+핑키 주행·도킹·후진은 `amr/pinky_precision_docking` 의 `run_arena_mission` 을 수정 없이 그대로 쓰고,
+두산은 미션이 보내는 작업 신호(`/pinky/station_task/trigger` START → `/pinky/station_task/complete`)로만 연결한다.
+
+1. 핑키: `integration/tools/pinky_up.sh` + `pinky_fastdds_wlan0.xml` 을 핑키 `~/` 에 두고 `bash ~/pinky_up.sh`
+   - 재부팅 뒤 남은 bringup·sllidar 프로세스가 있으면 모터 포트를 못 잡으니 먼저 정리
+2. 두산 bringup(`remap_tf:=true`), 그리퍼, Nav2(`bringup_arena`) + RViz → 2D Pose Estimate (Nav2 는 하나만!)
+3. 두산 picker·비전: `ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false docking:=false omx:=false vision:=true web:=false`
+4. 도킹 노드(팀원 launch 그대로): `ros2 launch pinky_precision_docking precision_docking.launch.py`
+5. 연결: `python3 integration/tools/mission_bridge.py --items tide`
+6. 미션: `ros2 run pinky_precision_docking run_arena_mission --step 7 --no-home` → 끝나면 `--step packaging`
+   - `--step N` 은 1~6 이면 **N번째 구역**(마커 번호 아님). 마커 5 포장 구역은 `--step packaging` 으로
