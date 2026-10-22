@@ -12,6 +12,7 @@ Ctrl+C: Nav2 목표·도킹·OMX 를 모두 취소하고 바퀴에 0 을 보낸�
 10/22 오전 흐름(run_arena_mission --step 7 --no-home 으로 선반 피킹) 뒤에 이어서 쓰는 방법:
   python3 integration/scripts/pack_run.py --after-pick --dock-node laptop
   --after-pick       : home 확인을 건너뛰고 선반에서 언도킹한 자리에서 바로 포장대로 출발
+  --from-dock        : 핑키를 포장대 앞에 직접 두고 도킹부터 시작 (home 확인·포장대 주행 생략)
   --dock-node laptop : 노트북에 이미 켜 둔 도킹 노드(main v6.0 precision_docking)를
                        /docking/target_marker_id + /docking/start 로 시작 (핑키에 v5 를 따로 띄우지 않음)
 OMX 가 끝나면 포장대에서 후진(--undock, 기본 0.35m) 뒤 home(P) 으로 돌아온다 (--no-return 이면 생략).
@@ -295,6 +296,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dock-distance', type=float, default=0.10)
     ap.add_argument('--after-pick', action='store_true', help='선반 피킹(run_arena_mission) 뒤 이어서: home 확인 생략')
+    ap.add_argument('--from-dock', action='store_true', help='포장대 앞에 둔 상태에서 도킹부터 시작')
     ap.add_argument('--dock-node', choices=('pinky', 'laptop'), default='pinky',
                     help='pinky: 핑키에서 v5 launch 실행(원래 방식) / laptop: 노트북에 켜 둔 v6.0 노드 사용')
     ap.add_argument('--undock', type=float, default=0.35, help='OMX 뒤 포장대에서 후진 거리 m (팀원 미션 packaging 값)')
@@ -303,11 +305,13 @@ def main():
     run = Run(args.dock_distance, args.dock_node)
     ok = False
     try:
-        if args.after_pick:
-            run.clear_costmaps()
-        else:
-            run.check_home()
-        run.drive_to_pack(); run.dock(); run.omx()
+        if not args.from_dock:
+            if args.after_pick:
+                run.clear_costmaps()
+            else:
+                run.check_home()
+            run.drive_to_pack()
+        run.dock(); run.omx()
         if not args.no_return:
             run.return_home(args.undock)
         ok = True
