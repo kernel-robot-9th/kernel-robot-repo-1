@@ -66,3 +66,6 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 5. 연결: `python3 integration/tools/mission_bridge.py --items tide`
 6. 미션: `ros2 run pinky_precision_docking run_arena_mission --step 7 --no-home` → 끝나면 `--step packaging`
    - `--step N` 은 1~6 이면 **N번째 구역**(마커 번호 아님). 마커 5 포장 구역은 `--step packaging` 으로
+7. 포장·복귀 (선반 미션이 끝난 뒤, OMX packer 실행 중): `python3 integration/scripts/pack_run.py --after-pick --dock-node laptop`
+   - 포장대 주행 → 마커 5 도킹(노트북 v6.0 노드) → OMX `start`/`done` → 후진 0.35m → home(P) 복귀
+   - 옵션 없이 실행하면 원래대로 home 확인부터 시작하고 핑키에서 v5 도킹을 띄움
