@@ -6,11 +6,10 @@
     run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
     policy_path: ~/team/kernel-robot-repo-1/omx/models/act_120000/pretrained_model   # 릴리스 omx-act-120000 (git 에는 안 올라감)
     # 카메라는 /dev/videoN 대신 꽂힌 USB 자리 기준 경로 (다시 꽂아도 번호가 안 바뀜, 같은 자리에 꽂을 것)
-    # 10/19 확인: 왼손목 = 허브A 3번, 오른손목 = 허브B 4번, 머리(SNAP U2) = 허브B 2번
-    left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:4.3:1.0-video-index0
-    right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
-    head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.2:1.0-video-index0
-    cam_fourcc: MJPG            # 손목 카메라(Innomaker)가 USB 2 허브에서 기본 형식으론 영상이 안 나옴
+    # 10/22 확인(omx_identify): 왼손목 = 10.1, 오른손목 = 10.2.3, 머리(SNAP U2) = 10.4
+    left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.1:1.0-video-index0
+    right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.2.3:1.0-video-index0
+    head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
     task: Packaging the box     # 학습 때 문장과 같게
     episode_time: 60
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
