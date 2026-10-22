@@ -8,15 +8,18 @@ RIGHT_CAM=${RIGHT_CAM:-/dev/video6}
 HEAD_CAM=${HEAD_CAM:-/dev/video8}
 EPISODE_TIME=${EPISODE_TIME:-60}
 TASK=${TASK:-"Packaging the box"}
+CAM_FOURCC=${CAM_FOURCC:-}   # 비우면 기본 형식. 예: MJPG (USB 2 허브 하나에 카메라 3대면 기본 형식으론 대역폭이 모자라 영상이 안 나옴)
 # ===================
+FOURCC_OPT=""
+[ -n "$CAM_FOURCC" ] && FOURCC_OPT=", fourcc: $CAM_FOURCC"
 
 lerobot-record \
 --robot.type=bi_omx_follower \
 --robot.left_arm_config.port=/dev/left_omx_follower \
 --robot.right_arm_config.port=/dev/right_omx_follower \
---robot.left_arm_config.cameras="{wrist: {type: opencv, index_or_path: $LEFT_CAM, width: 640, height: 480, fps: 30}}" \
---robot.right_arm_config.cameras="{wrist: {type: opencv, index_or_path: $RIGHT_CAM, width: 640, height: 480, fps: 30}}" \
---robot.cameras="{head: {type: opencv, index_or_path: $HEAD_CAM, width: 640, height: 480, fps: 30}}" \
+--robot.left_arm_config.cameras="{wrist: {type: opencv, index_or_path: $LEFT_CAM, width: 640, height: 480, fps: 30$FOURCC_OPT}}" \
+--robot.right_arm_config.cameras="{wrist: {type: opencv, index_or_path: $RIGHT_CAM, width: 640, height: 480, fps: 30$FOURCC_OPT}}" \
+--robot.cameras="{head: {type: opencv, index_or_path: $HEAD_CAM, width: 640, height: 480, fps: 30$FOURCC_OPT}}" \
 --robot.id=bi_omx_follower \
 --policy.path=$POLICY_PATH \
 --policy.device=cuda \

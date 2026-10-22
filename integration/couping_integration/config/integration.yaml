@@ -10,6 +10,7 @@
     left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.1:1.0-video-index0
     right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.2.3:1.0-video-index0
     head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
+    cam_fourcc: MJPG            # 이 노트북은 카메라 3대가 USB 2 허브 하나에 있어 압축(MJPG)해야 영상이 나옴
     task: Packaging the box     # 학습 때 문장과 같게
     episode_time: 60
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
