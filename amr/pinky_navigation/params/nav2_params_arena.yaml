@@ -105,7 +105,7 @@ controller_server:
       use_collision_detection: true
       max_allowed_time_to_collision_up_to_carrot: 0.5
       max_robot_pose_search_dist: 1.0
-      transform_tolerance: 0.2
+      transform_tolerance: 1.0   # 10/23: Wi-Fi 로 라이다가 늦게 와 map->odom 이 0.5~0.9s 늦어 주행 중 중단 → 0.2 에서 늘림
 
       use_cancel_deceleration: false
       cancel_deceleration: 3.2
