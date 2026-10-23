@@ -97,7 +97,7 @@ def generate_launch_description():
 
     center_tolerance_arg = DeclareLaunchArgument(
         'center_tolerance',
-        default_value='0.005',
+        default_value='0.02',   # 10/23: 0.005 -> 0.02 (5mm 안 맞으면 계속 후진·재진입하던 문제)
         description='Lateral center error tolerance for docking completion (meters)',
     )
 
