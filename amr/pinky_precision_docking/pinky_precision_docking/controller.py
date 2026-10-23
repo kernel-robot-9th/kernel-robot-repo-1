@@ -123,7 +123,7 @@ class ControllerParams:
     # robustness
     max_retries: int = 5
     docking_timeout: float = 180.0
-    search_timeout: float = 30.0
+    search_timeout: float = 45.0     # 마커 탐색 회전 시간: search_angular_vel 0.15 rad/s 로 한 바퀴(2π/0.15≈42s) + 여유 (10/23, 30s 는 약 260°만 돎)
     cam_lost_timeout: float = 1.2       # camera age that triggers REACQUIRE in far phases
     blind_sigma_y: float = 0.006        # max lateral sigma tolerated while blind
     sensor_fresh_age: float = 0.35
