@@ -151,6 +151,7 @@ local_costmap:
       update_frequency: 5.0
       publish_frequency: 2.0
       global_frame: odom
+      transform_tolerance: 1.0   # 10/23: 기본 0.3s. Wi-Fi 지연으로 map->odom 이 늦어 "Failed to transform end pose" 로 중단되던 문제
       robot_base_frame: base_footprint
       rolling_window: true
       width: 3
@@ -194,6 +195,7 @@ global_costmap:
       update_frequency: 1.0
       publish_frequency: 1.0
       global_frame: map
+      transform_tolerance: 1.0   # 10/23: 기본 0.3s. Wi-Fi 지연으로 map->odom 이 늦어 "Failed to transform end pose" 로 중단되던 문제
       robot_base_frame: base_footprint
       footprint: '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
       resolution: 0.025
@@ -270,7 +272,7 @@ behavior_server:
     local_frame: odom
     global_frame: map
     robot_base_frame: base_footprint
-    transform_tolerance: 0.1
+    transform_tolerance: 1.0   # 10/23: 0.1 -> 1.0 (도착 뒤 제자리 회전 등 behavior 도 같은 지연 영향)
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
     min_rotational_vel: 0.4
