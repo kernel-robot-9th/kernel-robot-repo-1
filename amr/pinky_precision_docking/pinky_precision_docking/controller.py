@@ -190,7 +190,7 @@ class DockingController:
         self.reason = ''
         self.target: dict = {}
         self.dwell_start = None
-        self.last_bearing_sign = 1.0
+        self.last_bearing_sign = -1.0  # 마커를 한 번도 못 봤을 때 탐색 회전 방향: -1 = 오른쪽(시계 방향) (10/23, 원래 +1 = 왼쪽)
         self.search_turned = 0.0
         self.y_at_drive_start = 0.0
         self.cam_updates_at_phase = 0
