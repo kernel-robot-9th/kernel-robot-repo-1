@@ -123,6 +123,7 @@ class ControllerParams:
     # robustness
     max_retries: int = 5
     docking_timeout: float = 180.0
+    search_sweep_deg: float = 30.0      # SEARCH: 제자리에서 좌우로 이 각도까지 번갈아 회전 (10/23, 한 방향 연속 회전 대신)
     search_timeout: float = 45.0     # 마커 탐색 회전 시간: search_angular_vel 0.15 rad/s 로 한 바퀴(2π/0.15≈42s) + 여유 (10/23, 30s 는 약 260°만 돎)
     cam_lost_timeout: float = 1.2       # camera age that triggers REACQUIRE in far phases
     blind_sigma_y: float = 0.006        # max lateral sigma tolerated while blind
@@ -190,8 +191,9 @@ class DockingController:
         self.reason = ''
         self.target: dict = {}
         self.dwell_start = None
-        self.last_bearing_sign = -1.0  # 마커를 한 번도 못 봤을 때 탐색 회전 방향: -1 = 오른쪽(시계 방향) (10/23, 원래 +1 = 왼쪽)
-        self.search_turned = 0.0
+        self.last_bearing_sign = 1.0   # 탐색 첫 회전 방향 (+1 = 왼쪽). 마커를 본 뒤 놓치면 마지막으로 본 쪽부터
+        self.search_turned = 0.0       # SEARCH 진입 뒤 누적 회전각 [rad] (명령 각속도 적분)
+        self.search_dir = 1.0
         self.y_at_drive_start = 0.0
         self.cam_updates_at_phase = 0
         self.lidar_updates_at_phase = 0
@@ -203,6 +205,8 @@ class DockingController:
 
     def start(self, now: float):
         self.reset(Phase.SEARCH)
+        self.search_turned = 0.0
+        self.search_dir = self.last_bearing_sign
         self.start_time = now
         self.phase_start = now
         self._event(now, Phase.SEARCH, 'docking started')
@@ -227,6 +231,9 @@ class DockingController:
         self.phase = phase
         self.phase_start = now
         self.reason = reason
+        if phase == Phase.SEARCH:
+            self.search_turned = 0.0
+            self.search_dir = self.last_bearing_sign
         self.dwell_start = None
         self.cam_updates_at_phase = cam_updates
         self.lidar_updates_at_phase = lidar_updates
@@ -321,6 +328,8 @@ class DockingController:
         if not self.active:
             v, w = 0.0, 0.0
             self.smoother.reset()
+        if self.phase == Phase.SEARCH:
+            self.search_turned += w * dt
         self.max_abs_w = max(self.max_abs_w, abs(w))
         self.path_length += abs(v) * dt
         out.v, out.w, out.phase = v, w, self.phase
@@ -368,7 +377,13 @@ class DockingController:
                 return 0.0, 0.0
             if t_phase < 0.6:   # look first before turning
                 return 0.0, 0.0
-            return 0.0, self.last_bearing_sign * p.w_search
+            # 좌 30° → 우 30° → 좌 30° … 번갈아 회전 (한 방향으로 계속 돌지 않음)
+            lim = math.radians(p.search_sweep_deg)
+            if self.search_dir > 0 and self.search_turned >= lim:
+                self.search_dir = -1.0
+            elif self.search_dir < 0 and self.search_turned <= -lim:
+                self.search_dir = 1.0
+            return 0.0, self.search_dir * p.w_search
 
         # ---------------------------------------------------------- ACQUIRE
         if self.phase == Phase.ACQUIRE:

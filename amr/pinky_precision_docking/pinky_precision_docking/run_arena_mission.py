@@ -45,6 +45,12 @@ WAYPOINTS = {
     'packaging': [0.7240, 0.2430, 0.1070], # Packaging Area Pre-docking (Marker 5)
 }
 
+# 도착 판정 완화 (10/23): 이 거리(m) 안에 들어오면 Nav2 의 정밀 도착(xy 6cm) 을 기다리지 않고
+# 도착으로 보고, 남은 방향만 제자리 회전으로 맞춘다. 첫 번째 선반 진입 좌표에서 목표 근처를 맴돌다 실패하던 문제.
+ARRIVAL_TOLERANCE = {
+    'shelf1': 0.15,
+}
+
 # Complete Arena Mission Stations: All 6 ArUco Markers across Area 1, 2, and 3
 # Actual Physical Environment Marker Layout:
 # Area 1 (Shelf 1): Left=8, Center=9, Right=7
@@ -186,8 +192,10 @@ class ArenaMissionController:
             time.sleep(0.01)
         print(f"[Mission] Target ArUco Marker ID set to {marker_id} successfully.")
 
-    def navigate_to(self, waypoint_name: str, x: float, y: float, yaw: float, timeout_sec: float = 180.0) -> bool:
-        """Navigate to waypoint using Nav2 BasicNavigator with simulation-aware progress logging."""
+    def navigate_to(self, waypoint_name: str, x: float, y: float, yaw: float, timeout_sec: float = 180.0,
+                    arrival_tol: float = 0.0) -> bool:
+        """Navigate to waypoint using Nav2 BasicNavigator with simulation-aware progress logging.
+        arrival_tol > 0: 목표에서 이 거리 안이면 도착으로 보고 방향만 제자리 회전으로 맞춤."""
         print(f"\n>>> [Nav2] Navigating to '{waypoint_name}': x={x:.3f}m, y={y:.3f}m, yaw={math.degrees(yaw):+.1f} deg (timeout: {timeout_sec:.0f}s)...")
 
         goal = PoseStamped()
@@ -205,8 +213,16 @@ class ArenaMissionController:
         start_wall_t = time.time()
         last_log_wall_t = start_wall_t
 
+        last_xy = None
         while not self.nav.isTaskComplete():
             feedback = self.nav.getFeedback()
+            if feedback:
+                last_xy = (feedback.current_pose.pose.position.x, feedback.current_pose.pose.position.y,
+                           feedback.current_pose.pose.orientation)
+                if arrival_tol > 0 and math.hypot(last_xy[0] - x, last_xy[1] - y) < arrival_tol \
+                        and time.time() - start_wall_t > 1.0:
+                    self.nav.cancelTask()
+                    return self._finish_heading(waypoint_name, last_xy, x, y, yaw)
             now_wall_t = time.time()
             now_clk = self.nav.get_clock().now()
 
@@ -238,8 +254,26 @@ class ArenaMissionController:
             print(f"[Nav2] Successfully arrived at '{waypoint_name}' in {elapsed_total:.1f}s (sim).")
             return True
         else:
+            if arrival_tol > 0 and last_xy and math.hypot(last_xy[0] - x, last_xy[1] - y) < arrival_tol:
+                print(f"[Nav2] '{waypoint_name}' result {res} 이지만 목표 {arrival_tol*100:.0f}cm 안이라 도착으로 처리")
+                return self._finish_heading(waypoint_name, last_xy, x, y, yaw)
             print(f"[Nav2 Error] Navigation to '{waypoint_name}' failed with result: {res}")
             return False
+
+    def _finish_heading(self, waypoint_name, last_xy, x, y, yaw) -> bool:
+        """완화된 도착 뒤 남은 방향 오차를 Nav2 spin 으로 맞춤."""
+        q = last_xy[2]
+        cur_yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+        err = math.atan2(math.sin(yaw - cur_yaw), math.cos(yaw - cur_yaw))
+        dist = math.hypot(last_xy[0] - x, last_xy[1] - y)
+        print(f"[Nav2] '{waypoint_name}' 도착 판정 완화: 목표까지 {dist*100:.1f}cm, 방향 오차 {math.degrees(err):+.0f}° → 제자리 회전")
+        if abs(err) > math.radians(5):
+            time.sleep(0.3)
+            self.nav.spin(spin_dist=err, time_allowance=15)
+            while not self.nav.isTaskComplete():
+                time.sleep(0.1)
+            print(f"[Nav2] 회전 결과: {self.nav.getResult()}")
+        return True
 
     def execute_docking(self, station_name: str, marker_id: int, timeout_sec: float = 120.0) -> bool:
         """Execute precision docking to designated ArUco marker."""
@@ -510,7 +544,8 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
 
             # Step 1: Navigate to Pre-docking Waypoint
             print(f"\n>>> [Stage {idx}-1] Navigating to Pre-docking Waypoint '{pre_dock_key}'...")
-            if not ctrl.navigate_to(f"{pre_dock_key} Pre-docking", *pre_dock_pose, timeout_sec=nav_timeout):
+            if not ctrl.navigate_to(f"{pre_dock_key} Pre-docking", *pre_dock_pose, timeout_sec=nav_timeout,
+                                    arrival_tol=ARRIVAL_TOLERANCE.get(pre_dock_key, 0.0)):
                 raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
             time.sleep(1.0)
 

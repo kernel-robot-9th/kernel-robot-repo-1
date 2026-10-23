@@ -95,7 +95,7 @@ controller_server:
       use_cost_regulated_linear_velocity_scaling: true
       cost_scaling_dist: 0.25
       cost_scaling_gain: 1.2
-      inflation_cost_scaling_factor: 7.0
+      inflation_cost_scaling_factor: 3.0   # 10/23: 코스트맵 cost_scaling_factor(3.0) 와 맞춤
 
       # 목적지 접근 시 감속
       approach_velocity_scaling_dist: 0.25
@@ -160,8 +160,8 @@ local_costmap:
       plugins: ["voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 6.0
-        inflation_radius: 0.12
+        cost_scaling_factor: 3.0      # 10/23: 6.0 -> 3.0 (비용이 천천히 줄어 벽에서 더 떨어져 다님)
+        inflation_radius: 0.20        # 10/23: 0.12 -> 0.20 (몸 반폭 0.065 + 벽 여유 약 13cm)
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -218,8 +218,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 6.0
-        inflation_radius: 0.12
+        cost_scaling_factor: 3.0      # 10/23: 6.0 -> 3.0 (비용이 천천히 줄어 벽에서 더 떨어져 다님)
+        inflation_radius: 0.20        # 10/23: 0.12 -> 0.20 (몸 반폭 0.065 + 벽 여유 약 13cm)
       always_send_full_costmap: True
 
 map_saver:
