@@ -49,6 +49,7 @@ WAYPOINTS = {
 # 도착으로 보고, 남은 방향만 제자리 회전으로 맞춘다. 첫 번째 선반 진입 좌표에서 목표 근처를 맴돌다 실패하던 문제.
 ARRIVAL_TOLERANCE = {
     'shelf1': 0.15,
+    'shelf2': 0.15,   # 10/26: 선반2(마커 4·2) 진입도 같은 방식
 }
 
 # Complete Arena Mission Stations: All 6 ArUco Markers across Area 1, 2, and 3
