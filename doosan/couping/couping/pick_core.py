@@ -145,9 +145,9 @@ def plan(target, p, slot=1, no_place='hold'):
             to_front,
             {'kind': 'movej', 'desc': '핑키 위로 이동', 'posj': above['posj']},
             {'kind': 'movel_x', 'desc': f'{slot}번 자리 위로', 'x': over},
-            {'kind': 'movel_x', 'desc': f'{slot}번 자리에 내리기', 'x': place['posx'], 'slow': True},
+            {'kind': 'movel_x', 'desc': f'{slot}번 자리에 내리기', 'x': place['posx']},  # 박스 안으로 떨어뜨림: 일반 속도 (10/26)
             release,
-            {'kind': 'movel_x', 'desc': '위로 빠지기', 'x': over, 'slow': True},
+            {'kind': 'movel_x', 'desc': '위로 빠지기', 'x': over},
             to_observe,
         ]
         result = 'placed'
