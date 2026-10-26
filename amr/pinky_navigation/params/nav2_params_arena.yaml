@@ -95,7 +95,7 @@ controller_server:
       use_cost_regulated_linear_velocity_scaling: true
       cost_scaling_dist: 0.25
       cost_scaling_gain: 1.2
-      inflation_cost_scaling_factor: 3.0   # 10/23: 코스트맵 cost_scaling_factor(3.0) 와 맞춤
+      inflation_cost_scaling_factor: 10.0  # 10/26: 코스트맵 cost_scaling_factor(10.0) 와 맞춤
 
       # 목적지 접근 시 감속
       approach_velocity_scaling_dist: 0.25
@@ -156,14 +156,16 @@ local_costmap:
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.025
+      resolution: 0.02   # 10/26: 0.025 -> 0.02 (맵 해상도와 같게, 좁은 통로 정밀도)
       # 10/26: 후방 적재판(Cargo Plate) 포함. 적재판이 없으면 '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
       footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.19, -0.075], [-0.19, 0.075]]'
       plugins: ["obstacle_layer", "inflation_layer"]   # 10/26: voxel_layer 대신 2D 경량 obstacle_layer
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0      # 10/23: 6.0 -> 3.0 (비용이 천천히 줄어 벽에서 더 떨어져 다님)
-        inflation_radius: 0.20        # 10/23: 0.12 -> 0.20 (몸 반폭 0.065 + 벽 여유 약 13cm)
+        # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
+        # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
+        cost_scaling_factor: 10.0
+        inflation_radius: 0.15
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -186,7 +188,7 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint_padding: 0.01
+      footprint_padding: 0.0   # 10/26: 0.01 -> 0 (좁은 통로에서 풋프린트 여유 1cm 도 아낌)
       update_frequency: 1.0
       publish_frequency: 1.0
       global_frame: map
@@ -194,7 +196,7 @@ global_costmap:
       robot_base_frame: base_footprint
       # 10/26: 후방 적재판(Cargo Plate) 포함. 적재판이 없으면 '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
       footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.19, -0.075], [-0.19, 0.075]]'
-      resolution: 0.025
+      resolution: 0.02   # 10/26: 0.025 -> 0.02 (맵 해상도와 같게, 좁은 통로 정밀도)
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -216,8 +218,10 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0      # 10/23: 6.0 -> 3.0 (비용이 천천히 줄어 벽에서 더 떨어져 다님)
-        inflation_radius: 0.20        # 10/23: 0.12 -> 0.20 (몸 반폭 0.065 + 벽 여유 약 13cm)
+        # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
+        # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
+        cost_scaling_factor: 10.0
+        inflation_radius: 0.15
       always_send_full_costmap: True
 
 map_saver:
