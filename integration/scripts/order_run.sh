@@ -8,7 +8,6 @@
 # 주행·도킹·후진은 팀원 run_arena_mission(--step <마커>) 을 그대로 쓰고, 포장대는 pack_run.py 를 쓴다.
 # 두산·비전·OMX packer·Nav2·핑키 bringup/도킹 노드는 미리 띄워 둔다 (integration/README.md 10/26).
 # 구역별 품목은 mission_bridge.py 의 ZONE_ITEMS (선반1 = tide·paper_towel·bath_tissue, 선반2 = carrot·tomato·salad).
-set -u
 ORDER="${1:?주문 품목을 쉼표로 (예: tide,carrot)}"
 N="${2:-$(date +%m%d_%H%M%S)}"
 SHELF1="${SHELF1:-7}"
@@ -16,6 +15,7 @@ SHELF2="${SHELF2:-4}"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 L=~/couping_ws/logs
 source /opt/ros/jazzy/setup.bash && source ~/couping_ws/install/setup.bash && source ~/couping_ws/dds_env.sh
+set -u   # ROS setup.bash 는 정의 안 된 변수를 써서 source 뒤에 켬
 
 NEED1=0; NEED2=0
 for it in ${ORDER//,/ }; do
