@@ -4,6 +4,7 @@
 #   bash integration/scripts/order_run.sh tide,carrot            # 회차 이름은 날짜_시각
 #   bash integration/scripts/order_run.sh tide,carrot 3          # 로그 이름 order_3_*.log
 #   SHELF1=9 SHELF2=2 bash integration/scripts/order_run.sh ...  # 도킹 마커 바꾸기 (기본 7, 4)
+#   RETURN_HOME=1 bash ...                                        # 포장 뒤 후진해서 home(P) 복귀
 #   SHELF_DIST=0.03 PACK_DIST=0.07 bash ...                      # 도킹 목표 거리(m, 마커 벽까지). 기본 선반 0.03, 포장대 0.07
 #
 # 주행·도킹·후진은 팀원 run_arena_mission(--step <마커>) 을 그대로 쓰고, 포장대는 pack_run.py 를 쓴다.
@@ -65,6 +66,6 @@ shelf() {   # $1 = 마커 번호. 터미널 입력은 막아 둠 (빈 줄로 두
 [ $NEED2 = 1 ] && shelf "$SHELF2"
 
 dock_dist "$PACK_DIST"
-python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop --no-return 2>&1 | tee "$L/order_${N}_pack.log"
+python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop $([ "${RETURN_HOME:-0}" = 1 ] || echo --no-return) 2>&1 | tee "$L/order_${N}_pack.log"
 grep -q "전체 완료" "$L/order_${N}_pack.log" || { echo "중단: 포장대 단계 실패"; exit 1; }
 echo "주문 $N 완료: $(( $(date +%s) - T0 ))초"
