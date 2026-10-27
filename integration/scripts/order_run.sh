@@ -3,6 +3,7 @@
 #
 #   bash integration/scripts/order_run.sh tide,carrot            # 회차 이름은 날짜_시각
 #   bash integration/scripts/order_run.sh tide,carrot 3          # 로그 이름 order_3_*.log
+#   PINKY=3 bash integration/scripts/order_run.sh tide,carrot    # 3호기 (CycloneDDS 도메인 3)
 #   SHELF1=9 SHELF2=2 bash integration/scripts/order_run.sh ...  # 도킹 마커 바꾸기 (기본 7, 4)
 #
 # 주행·도킹·후진은 팀원 run_arena_mission(--step <마커>) 을 그대로 쓰고, 포장대는 pack_run.py 를 쓴다.
@@ -14,7 +15,8 @@ SHELF1="${SHELF1:-7}"
 SHELF2="${SHELF2:-4}"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 L=~/couping_ws/logs
-source /opt/ros/jazzy/setup.bash && source ~/couping_ws/install/setup.bash && source ~/couping_ws/dds_env.sh
+# 핑키 번호 = ROS_DOMAIN_ID (dds_env.sh: 1호기 1, 2호기 2, 3호기 3). PINKY=3 bash order_run.sh ... (없으면 지금 셸의 ROS_DOMAIN_ID)
+source /opt/ros/jazzy/setup.bash && source ~/couping_ws/install/setup.bash && source ~/couping_ws/dds_env.sh "${PINKY:-${ROS_DOMAIN_ID:-2}}" > /dev/null
 set -u   # ROS setup.bash 는 정의 안 된 변수를 써서 source 뒤에 켬
 
 NEED1=0; NEED2=0
