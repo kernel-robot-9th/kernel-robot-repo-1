@@ -95,7 +95,7 @@ controller_server:
       use_cost_regulated_linear_velocity_scaling: true
       cost_scaling_dist: 0.25
       cost_scaling_gain: 1.2
-      inflation_cost_scaling_factor: 10.0  # 10/26: 코스트맵 cost_scaling_factor(10.0) 와 맞춤
+      inflation_cost_scaling_factor: 4.0  # 10/27: 코스트맵 cost_scaling_factor(4.0) 와 맞춤
 
       # 목적지 접근 시 감속
       approach_velocity_scaling_dist: 0.25
@@ -164,8 +164,8 @@ local_costmap:
         plugin: "nav2_costmap_2d::InflationLayer"
         # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
         # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
-        cost_scaling_factor: 10.0
-        inflation_radius: 0.15   # 10/27: 적재판 270x100 반영 뒤 0.15 로 되돌림 (몸체 옆면 0.075m, 40cm 통로 튜닝값)
+        cost_scaling_factor: 4.0   # 10/27: 10 -> 4 (벽에서 멀어질수록 비용이 천천히 줄어 가운데로)
+        inflation_radius: 0.25   # 10/27: 0.15 -> 0.25 (적재판 모서리 0.245m 가 모퉁이에서 벽을 스쳐 경로를 통로 가운데로)
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -220,8 +220,8 @@ global_costmap:
         plugin: "nav2_costmap_2d::InflationLayer"
         # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
         # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
-        cost_scaling_factor: 10.0
-        inflation_radius: 0.15   # 10/27: 적재판 270x100 반영 뒤 0.15 로 되돌림 (몸체 옆면 0.075m, 40cm 통로 튜닝값)
+        cost_scaling_factor: 4.0   # 10/27: 10 -> 4 (벽에서 멀어질수록 비용이 천천히 줄어 가운데로)
+        inflation_radius: 0.25   # 10/27: 0.15 -> 0.25 (적재판 모서리 0.245m 가 모퉁이에서 벽을 스쳐 경로를 통로 가운데로)
       always_send_full_costmap: True
 
 map_saver:
