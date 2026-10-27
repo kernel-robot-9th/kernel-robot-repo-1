@@ -123,7 +123,7 @@ class ControllerParams:
     # robustness
     max_retries: int = 5
     docking_timeout: float = 180.0
-    search_sweep_deg: float = 30.0      # SEARCH: 제자리에서 좌우로 이 각도까지 번갈아 회전 (10/23, 한 방향 연속 회전 대신)
+    search_sweep_deg: float = 90.0      # SEARCH: 제자리에서 좌우로 이 각도까지 번갈아 회전 (10/23 30도 -> 10/27 90도: 대기 지점 도착 방향이 크게 틀어져도 마커를 찾게. 0.15 rad/s 로 한 번 훑는 데 약 32초, search_timeout 45초 안)
     search_timeout: float = 45.0     # 마커 탐색 회전 시간: search_angular_vel 0.15 rad/s 로 한 바퀴(2π/0.15≈42s) + 여유 (10/23, 30s 는 약 260°만 돎)
     cam_lost_timeout: float = 1.2       # camera age that triggers REACQUIRE in far phases
     blind_sigma_y: float = 0.006        # max lateral sigma tolerated while blind
