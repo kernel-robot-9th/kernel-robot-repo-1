@@ -41,19 +41,15 @@ from pinky_precision_docking.sound_effects import (
 WAYPOINTS = {
     'home': [0.1200, 0.0000, 0.0000],
     'shelf1': [0.6000, 1.4700, 3.1416],  # Shelf 1 Area Representative Pre-docking (Views all 3 bays: Left=8, Center=9, Right=7)
-    # 10/27 핑키 인수인계 predock_poses.json 실측값 (마커별 400mm 전방)
-    'shelf1_m8': [0.6090, 1.2586, -3.0861],
-    'shelf1_m9': [0.5598, 1.4057, 3.0349],
-    'shelf1_m7': [0.5270, 1.6069, 3.0536],
-    'shelf2': [1.0783, 1.5346, -1.5355], # Shelf 2 공용 Pre-docking (마커 4·2), 10/27 실측값 (이전 1.11, 1.50, -1.5708)
-    'packaging': [0.7710, 0.2436, 0.0467], # Packaging Area Pre-docking (Marker 5), 10/27 실측값 (이전 0.724, 0.243, 0.107)
+    'shelf2': [1.1100, 1.5000, -1.5708], # Shelf 2 Area Representative Pre-docking (Centered in Corridor 2: Left=4, Right=2)
+    'packaging': [0.7240, 0.2430, 0.1070], # Packaging Area Pre-docking (Marker 5)
 }
 
 # 도착 판정 완화 (10/23): 이 거리(m) 안에 들어오면 Nav2 의 정밀 도착(xy 6cm) 을 기다리지 않고
 # 도착으로 보고, 남은 방향만 제자리 회전으로 맞춘다. 첫 번째 선반 진입 좌표에서 목표 근처를 맴돌다 실패하던 문제.
 ARRIVAL_TOLERANCE = {
-    # 10/27: 끔 (팀원 원래 동작). Nav2 가 핑키 안에서 돌고 인수인계 파라미터로 도착 허용이 xy 10cm·yaw 0.25rad 로 넓어져
-    # Nav2 가 직접 도착·방향 맞춤. 다시 켜려면 예) 'shelf1_m7': 0.15, 'shelf2': 0.15
+    'shelf1': 0.15,
+    'shelf2': 0.15,   # 10/26: 선반2(마커 4·2) 진입도 같은 방식
 }
 
 # Complete Arena Mission Stations: All 6 ArUco Markers across Area 1, 2, and 3
@@ -70,7 +66,7 @@ ALL_STATIONS = [
         'marker_id': 8,
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 A Pick & Place (피킹 및 핑키 적재)',
-        'pre_docking': 'shelf1_m8',
+        'pre_docking': 'shelf1',
         'undock_dist': 0.50,
     },
     {
@@ -80,7 +76,7 @@ ALL_STATIONS = [
         'marker_id': 9,
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 B Pick & Place (피킹 및 핑키 적재)',
-        'pre_docking': 'shelf1_m9',
+        'pre_docking': 'shelf1',
         'undock_dist': 0.50,
     },
     {
@@ -90,7 +86,7 @@ ALL_STATIONS = [
         'marker_id': 7,
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 C Pick & Place (피킹 및 핑키 적재)',
-        'pre_docking': 'shelf1_m7',
+        'pre_docking': 'shelf1',
         'undock_dist': 0.55,
     },
     # Area 2: Shelf 2 (Coolers & Refrigeration - 2 Coolers: Left=4, Right=2)

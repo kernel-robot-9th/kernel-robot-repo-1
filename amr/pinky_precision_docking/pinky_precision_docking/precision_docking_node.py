@@ -35,7 +35,7 @@ from sensor_msgs.msg import CameraInfo, CompressedImage, Image, LaserScan
 from std_msgs.msg import Bool, Int32
 from std_srvs.srv import Trigger
 
-from .controller import ACTIVE_PHASES, ControllerParams, DockingController, Phase
+from .controller import ControllerParams, DockingController, Phase
 from .estimator import DockingEstimate, DockingEstimator, EstimatorParams
 from .geometry import Pose2D, wrap_angle
 from .marker_detector import ArucoMarkerDetector, CameraExtrinsics, MarkerObservation
@@ -132,10 +132,8 @@ class PrecisionDockingNode(Node):
         # Publishers
         self.cmd_vel_pub = self.create_publisher(Twist, self.cmd_vel_topic, reliable_qos)
         self.completed_pub = self.create_publisher(Bool, '/docking_completed', reliable_qos)
-        # 디버그 영상은 압축본만 보냄 (원본 bgr8 640x480 은 Wi-Fi 로 rqt 에서 받으면 도킹이 늦어짐, 10/26)
-        # RELIABLE 이어야 rqt_image_view(기본 RELIABLE 구독)와 연결됨. depth 1: 늦은 화면은 버리고 최신 것만
-        debug_qos = QoSProfile(reliability=QoSReliabilityPolicy.RELIABLE, history=QoSHistoryPolicy.KEEP_LAST, depth=1)
-        self.debug_image_pub = self.create_publisher(CompressedImage, '/docking/debug_image/compressed', debug_qos)
+        self.debug_raw_pub = self.create_publisher(Image, '/docking/debug_image', reliable_qos)
+        self.debug_image_pub = self.create_publisher(CompressedImage, '/docking/debug_image/compressed', reliable_qos)
 
         # Subscribers
         compressed_topic = self.image_topic if 'compressed' in self.image_topic else f'{self.image_topic}/compressed'
@@ -213,10 +211,6 @@ class PrecisionDockingNode(Node):
         self.declare_parameter('allow_retreat', True)
         self.declare_parameter('enable_continuous_curve', True)
         self.declare_parameter('osd_bg_alpha', 0.35)
-        # 디버그 영상(/docking/debug_image/compressed) 크기·속도. 마커 인식은 카메라 원본(640x480) 그대로
-        self.declare_parameter('debug_width', 320)
-        self.declare_parameter('debug_height', 240)
-        self.declare_parameter('debug_fps', 15.0)
         self.declare_parameter('csv_log_path', '/home/user/pinky_pro/docking_experiment_log.csv')
 
         self.start_in_idle = bool(self.get_parameter('start_in_idle').value)
@@ -259,9 +253,6 @@ class PrecisionDockingNode(Node):
         self.search_angular_vel = float(self.get_parameter('search_angular_vel').value)
         self.allow_retreat = bool(self.get_parameter('allow_retreat').value)
         self.osd_bg_alpha = float(self.get_parameter('osd_bg_alpha').value)
-        self.debug_size = (int(self.get_parameter('debug_width').value), int(self.get_parameter('debug_height').value))
-        self.debug_period = 1.0 / max(float(self.get_parameter('debug_fps').value), 0.1)
-        self.next_debug_time = 0.0
         self.csv_log_path = str(self.get_parameter('csv_log_path').value)
 
     def _on_parameter_update(self, params: List[Parameter]) -> SetParametersResult:
@@ -311,14 +302,7 @@ class PrecisionDockingNode(Node):
                 self.detector.set_intrinsics(K, D, (msg.width, msg.height), from_info=True)
                 self.get_logger().info(f'[Branch A] CameraInfo received: fx={K[0,0]:.1f}, cx={K[0,2]:.1f}, cy={K[1,2]:.1f}')
 
-    def _idle(self) -> bool:
-        """도킹 중이 아니고 디버그 영상 보는 곳도 없으면 True. 대기 중 영상·라이다 처리로 CPU 를 185% 쓰며
-        같은 핑키의 Nav2 를 굶겨 목표 응답이 시간 초과 나던 문제 (10/27). 도킹 시작 때 추정기는 reset 됨."""
-        return self.controller.phase not in ACTIVE_PHASES and self.debug_image_pub.get_subscription_count() == 0
-
     def _compressed_image_callback(self, msg: CompressedImage):
-        if self._idle():
-            return
         try:
             now = self._get_time_sec()
             self.last_compressed_rx_time = now
@@ -338,8 +322,6 @@ class PrecisionDockingNode(Node):
         self._image_callback(msg)
 
     def _image_callback(self, msg: Image):
-        if self._idle():
-            return
         try:
             now = self._get_time_sec()
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -393,8 +375,6 @@ class PrecisionDockingNode(Node):
         self._publish_debug(cv_image)
 
     def _scan_callback(self, msg: LaserScan):
-        if self._idle():
-            return
         now = self._get_time_sec()
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         if stamp <= 0.0 or abs(now - stamp) > 3.0:
@@ -602,22 +582,22 @@ class PrecisionDockingNode(Node):
         put_text(f_txt, (12, 90), 0.44, f_color, 1)
 
     def _publish_debug(self, img: np.ndarray):
-        if self.debug_image_pub.get_subscription_count() == 0:
-            return
-        # 평균 debug_fps 로 맞춤 (카메라 19fps 에서 '마지막 뒤 1/15초' 방식이면 한 장 걸러 9.5fps 가 됨)
-        now = time.monotonic()
-        if now < self.next_debug_time:
-            return
-        self.next_debug_time = max(self.next_debug_time + self.debug_period, now - self.debug_period)
-        if (img.shape[1], img.shape[0]) != self.debug_size:
-            img = cv2.resize(img, self.debug_size, interpolation=cv2.INTER_AREA)
-        success, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-        if success:
-            cmsg = CompressedImage()
-            cmsg.header.stamp = self.get_clock().now().to_msg()
-            cmsg.format = 'jpeg'
-            cmsg.data = enc.tobytes()
-            self.debug_image_pub.publish(cmsg)
+        stamp = self.get_clock().now().to_msg()
+        try:
+            raw_msg = self.bridge.cv2_to_imgmsg(img, encoding='bgr8')
+            raw_msg.header.stamp = stamp
+            self.debug_raw_pub.publish(raw_msg)
+        except Exception:
+            pass
+
+        if self.debug_image_pub.get_subscription_count() > 0:
+            success, enc = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            if success:
+                cmsg = CompressedImage()
+                cmsg.header.stamp = stamp
+                cmsg.format = 'jpeg'
+                cmsg.data = enc.tobytes()
+                self.debug_image_pub.publish(cmsg)
 
     def _publish_twist(self, twist: Twist):
         self.cmd_vel_pub.publish(twist)
