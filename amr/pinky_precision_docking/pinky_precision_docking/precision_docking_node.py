@@ -275,6 +275,8 @@ class PrecisionDockingNode(Node):
         self.estimator.reset()
         self.last_marker_obs = None
         self.last_wall_obs = None
+        # 식자재 선반(마커 4·2)은 좌우 탐색 대신 왼쪽으로 한 바퀴 (10/27)
+        self.ctrl_params.search_full_turn = self.target_marker_id in (4, 2)
         self.controller.start(now)
         resp.success = True
         resp.message = f'Docking started in {self.controller.phase.value} (Target ID: {self.target_marker_id})'

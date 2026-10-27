@@ -124,6 +124,7 @@ class ControllerParams:
     max_retries: int = 5
     docking_timeout: float = 180.0
     search_sweep_deg: float = 30.0      # SEARCH: 제자리에서 좌우로 이 각도까지 번갈아 회전 (10/23, 한 방향 연속 회전 대신)
+    search_full_turn: bool = False      # True 면 좌우 번갈아 대신 왼쪽으로 계속 회전 (한 바퀴). 식자재 선반(마커 4·2)용 (10/27)
     search_timeout: float = 45.0     # 마커 탐색 회전 시간: search_angular_vel 0.15 rad/s 로 한 바퀴(2π/0.15≈42s) + 여유 (10/23, 30s 는 약 260°만 돎)
     cam_lost_timeout: float = 1.2       # camera age that triggers REACQUIRE in far phases
     blind_sigma_y: float = 0.006        # max lateral sigma tolerated while blind
@@ -206,7 +207,7 @@ class DockingController:
     def start(self, now: float):
         self.reset(Phase.SEARCH)
         self.search_turned = 0.0
-        self.search_dir = self.last_bearing_sign
+        self.search_dir = 1.0 if self.p.search_full_turn else self.last_bearing_sign
         self.start_time = now
         self.phase_start = now
         self._event(now, Phase.SEARCH, 'docking started')
@@ -377,6 +378,8 @@ class DockingController:
                 return 0.0, 0.0
             if t_phase < 0.6:   # look first before turning
                 return 0.0, 0.0
+            if p.search_full_turn:   # 왼쪽으로 계속 (0.15 rad/s × search_timeout 45s ≈ 387°)
+                return 0.0, p.w_search
             # 좌 30° → 우 30° → 좌 30° … 번갈아 회전 (한 방향으로 계속 돌지 않음)
             lim = math.radians(p.search_sweep_deg)
             if self.search_dir > 0 and self.search_turned >= lim:
