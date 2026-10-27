@@ -28,6 +28,7 @@ from nav_msgs.msg import Odometry
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from std_msgs.msg import Bool, Int32, String
 from std_srvs.srv import Trigger
+from tf2_ros import Buffer, TransformListener
 
 from pinky_precision_docking.sound_effects import (
     play_docking_complete,
@@ -151,6 +152,9 @@ class ArenaMissionController:
             Bool, '/docking_completed', self._docking_completed_cb, 10
         )
         self.cmd_vel_pub = self.nav.create_publisher(Twist, '/cmd_vel', 10)
+        # 도착 뒤 방향 맞출 때 현재 방향(map -> base_footprint)을 바로 읽으려고 (10/27)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self.nav, spin_thread=True)
         self.target_id_pub = self.nav.create_publisher(Int32, '/docking/target_marker_id', 10)
         self.buzzer_cmd_pub = self.nav.create_publisher(String, '/pinky/buzzer/command', 10)
         self.start_dock_cli = self.nav.create_client(Trigger, '/docking/start')
@@ -261,19 +265,57 @@ class ArenaMissionController:
             print(f"[Nav2 Error] Navigation to '{waypoint_name}' failed with result: {res}")
             return False
 
+    def _current_yaw(self):
+        """map -> base_footprint 현재 방향 [rad]. 못 읽으면 None."""
+        try:
+            q = self.tf_buffer.lookup_transform('map', 'base_footprint', rclpy.time.Time()).transform.rotation
+        except Exception:
+            return None
+        return math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+
+    def _rotate_direct(self, yaw, tol, timeout=12.0):
+        """Nav2 spin 이 충돌 검사로 거부될 때: /cmd_vel 로 직접 제자리 회전 (벽 바로 앞이라 이동 없이 회전만)."""
+        tw = Twist()
+        end = time.time() + timeout
+        while time.time() < end:
+            cur = self._current_yaw()
+            if cur is None:
+                time.sleep(0.05)
+                continue
+            err = math.atan2(math.sin(yaw - cur), math.cos(yaw - cur))
+            if abs(err) <= tol:
+                break
+            tw.angular.z = math.copysign(min(0.6, max(0.15, 1.2 * abs(err))), err)
+            self.cmd_vel_pub.publish(tw)
+            time.sleep(0.05)
+        self.cmd_vel_pub.publish(Twist())
+
     def _finish_heading(self, waypoint_name, last_xy, x, y, yaw) -> bool:
-        """완화된 도착 뒤 남은 방향 오차를 Nav2 spin 으로 맞춤."""
-        q = last_xy[2]
-        cur_yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
-        err = math.atan2(math.sin(yaw - cur_yaw), math.cos(yaw - cur_yaw))
+        """완화된 도착 뒤 방향을 벽(목표 yaw) 쪽으로 맞춤. 회전 뒤 현재 방향을 다시 읽어 5도 안이 될 때까지 (최대 4번)."""
+        tol = math.radians(5)
         dist = math.hypot(last_xy[0] - x, last_xy[1] - y)
-        print(f"[Nav2] '{waypoint_name}' 도착 판정 완화: 목표까지 {dist*100:.1f}cm, 방향 오차 {math.degrees(err):+.0f}° → 제자리 회전")
-        if abs(err) > math.radians(5):
+        for attempt in range(1, 5):
             time.sleep(0.3)
+            cur = self._current_yaw()
+            if cur is None:
+                q = last_xy[2]
+                cur = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+            err = math.atan2(math.sin(yaw - cur), math.cos(yaw - cur))
+            print(f"[Nav2] '{waypoint_name}' 도착 판정 완화: 목표까지 {dist*100:.1f}cm, 방향 오차 {math.degrees(err):+.0f}° ({attempt}번째 확인)")
+            if abs(err) <= tol:
+                print("[Nav2] 방향 맞춤 완료")
+                return True
             self.nav.spin(spin_dist=err, time_allowance=15)
             while not self.nav.isTaskComplete():
                 time.sleep(0.1)
-            print(f"[Nav2] 회전 결과: {self.nav.getResult()}")
+            result = self.nav.getResult()
+            print(f"[Nav2] 회전 결과: {result}")
+            if result != TaskResult.SUCCEEDED:
+                print("[Nav2] spin 거부(충돌 검사 등) → /cmd_vel 로 직접 회전")
+                self._rotate_direct(yaw, tol)
+        cur = self._current_yaw()
+        if cur is not None:
+            print(f"[Nav2] 방향 맞춤 끝: 남은 오차 {math.degrees(math.atan2(math.sin(yaw - cur), math.cos(yaw - cur))):+.0f}°")
         return True
 
     def execute_docking(self, station_name: str, marker_id: int, timeout_sec: float = 120.0) -> bool:
