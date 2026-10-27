@@ -52,9 +52,8 @@ WAYPOINTS = {
 # 도착 판정 완화 (10/23): 이 거리(m) 안에 들어오면 Nav2 의 정밀 도착(xy 6cm) 을 기다리지 않고
 # 도착으로 보고, 남은 방향만 제자리 회전으로 맞춘다. 첫 번째 선반 진입 좌표에서 목표 근처를 맴돌다 실패하던 문제.
 ARRIVAL_TOLERANCE = {
-    'shelf1': 0.15,
-    'shelf1_m8': 0.15, 'shelf1_m9': 0.15, 'shelf1_m7': 0.15,   # 10/27: 마커별 좌표도 같은 방식
-    'shelf2': 0.15,   # 10/26: 선반2(마커 4·2) 진입도 같은 방식
+    # 10/27: 끔 (팀원 원래 동작). Nav2 가 핑키 안에서 돌고 인수인계 파라미터로 도착 허용이 xy 10cm·yaw 0.25rad 로 넓어져
+    # Nav2 가 직접 도착·방향 맞춤. 다시 켜려면 예) 'shelf1_m7': 0.15, 'shelf2': 0.15
 }
 
 # Complete Arena Mission Stations: All 6 ArUco Markers across Area 1, 2, and 3
