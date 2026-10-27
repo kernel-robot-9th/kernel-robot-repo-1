@@ -37,14 +37,22 @@ BRIDGE=$!
 trap 'kill $BRIDGE 2>/dev/null' EXIT
 sleep 2
 
+# Nav2 가 반만 뜬 상태(bt_navigator 실패)면 출발 직후 UNKNOWN 으로 끝나므로 먼저 확인 (10/27)
+timeout 10 ros2 lifecycle get /bt_navigator 2>/dev/null | grep -q '^active' \
+    || { echo "중단: Nav2(bt_navigator)가 active 아님. Nav2 를 다시 띄울 것"; exit 1; }
+
 T0=$(date +%s)
 python3 "$REPO/integration/tools/home_pose.py" || exit 1
 
 dock_dist() {   # 핑키 도킹 노드 목표 거리를 바꿈 (노드가 실행 중에 바로 반영)
     # ros2 param set 이 값은 바꾸고도 끝나지 않을 때가 있어(10/27) 시간 제한을 두고, 다시 읽어 확인
-    timeout 10 ros2 param set /precision_docking_node target_distance "$1" > /dev/null 2>&1
-    timeout 10 ros2 param get /precision_docking_node target_distance 2>/dev/null | grep -q "value is: $1\$" \
-        || { echo "중단: 도킹 목표 거리 $1 m 설정 실패 (핑키 도킹 노드 확인)"; exit 1; }
+    # ros2 daemon 이 막 다시 뜬 직후엔 노드 찾는 데 10초 넘게 걸려 첫 시도가 실패할 수 있어 3번까지
+    for try in 1 2 3; do
+        timeout 10 ros2 param set /precision_docking_node target_distance "$1" > /dev/null 2>&1
+        timeout 10 ros2 param get /precision_docking_node target_distance 2>/dev/null | grep -q "value is: $1\$" && break
+        [ $try = 3 ] && { echo "중단: 도킹 목표 거리 $1 m 설정 실패 (핑키 도킹 노드 확인)"; exit 1; }
+        echo "도킹 목표 거리 설정 재시도 ($try/3)"
+    done
     echo "도킹 목표 거리: $1 m"
 }
 
