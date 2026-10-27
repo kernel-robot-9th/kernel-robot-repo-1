@@ -6,10 +6,10 @@
     run_script: ~/team/kernel-robot-repo-1/omx/scripts/run_act.sh
     policy_path: ~/team/kernel-robot-repo-1/omx/models/act_120000/pretrained_model   # 릴리스 omx-act-120000 (git 에는 안 올라감)
     # 카메라는 /dev/videoN 대신 꽂힌 USB 자리 기준 경로 (다시 꽂아도 번호가 안 바뀜, 같은 자리에 꽂을 것)
-    # 10/22 확인(omx_identify): 왼손목 = 10.1, 오른손목 = 10.2.3, 머리(SNAP U2) = 10.4
-    left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.1:1.0-video-index0
-    right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.2.3:1.0-video-index0
-    head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
+    # 10/27 다시 꽂아 확인: 왼손목 = 10.4, 오른손목 = 10.3, 머리(SNAP U2) = 3 (본체 포트)
+    left_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.4:1.0-video-index0
+    right_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:10.3:1.0-video-index0
+    head_cam: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:3:1.0-video-index0
     cam_fourcc: MJPG            # 이 노트북은 카메라 3대가 USB 2 허브 하나에 있어 압축(MJPG)해야 영상이 나옴
     task: Packaging the box     # 학습 때 문장과 같게
     episode_time: 60
