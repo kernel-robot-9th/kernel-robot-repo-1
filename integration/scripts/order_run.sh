@@ -46,6 +46,6 @@ shelf() {   # $1 = 마커 번호. 터미널 입력은 막아 둠 (빈 줄로 두
 [ $NEED1 = 1 ] && shelf "$SHELF1"
 [ $NEED2 = 1 ] && shelf "$SHELF2"
 
-python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop --no-return 2>&1 | tee "$L/order_${N}_pack.log"
+python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop $([ "${RETURN_HOME:-0}" = 1 ] || echo --no-return) 2>&1 | tee "$L/order_${N}_pack.log"
 grep -q "전체 완료" "$L/order_${N}_pack.log" || { echo "중단: 포장대 단계 실패"; exit 1; }
 echo "주문 $N 완료: $(( $(date +%s) - T0 ))초"
