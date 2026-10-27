@@ -44,7 +44,7 @@ from std_srvs.srv import Trigger
 PINKY = 'pinky@192.168.111.102'
 MAP = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'amr', 'pinky_navigation', 'map', 'arena_map.pgm')
 HOME = (0.10, 0.24, 0.03)
-PACK = (0.97, 0.23, -0.30)  # 두 OMX 사이 마커를 바라보는 방향
+PACK = (0.855, 0.265, -0.30)  # 두 OMX 사이 마커를 바라보는 방향. 10/27: 폭 35cm 적재판이 벽에 닿아 (0.97, 0.23) 에서 바라보는 방향 그대로 12cm 뒤로 (벽 여유 4.4cm)
 MARKER_ID = 5
 # 팀원 README 의 실제 로봇 실행 명령 그대로 (마커 ID 만 현장 값)
 DOCK_CMD = ("bash -ic 'source ~/couping_dock_ws/install/setup.bash && ros2 launch pinky_precision_docking "
