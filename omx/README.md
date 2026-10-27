@@ -21,7 +21,8 @@ omx/
 ├── lerobot_patch/
 │   ├── bi_omx_follower/    # LeRobot에 추가할 양팔 follower 코드
 │   ├── bi_omx_leader/      # LeRobot에 추가할 양팔 leader 코드
-│   └── register.patch      # 위 코드를 LeRobot에 등록하는 변경분
+│   ├── register.patch      # 위 코드를 LeRobot에 등록하는 변경분
+│   └── early_stop.patch    # (선택) 그리퍼 값으로 에피소드 조기 종료, register.patch 다음에 적용
 └── models/
     └── README.md           # 모델 파일 다운로드 링크와 놓는 위치
 ```
@@ -55,6 +56,25 @@ python -c 'from lerobot.robots import bi_omx_follower; from lerobot.teleoperator
 ```
 
 `import ok`가 나오면 완료입니다. `git apply`가 실패하면 LeRobot 버전이 다른 것이니 이슈로 알려주세요.
+
+### 1-2-1. (선택) 조기 종료 패치
+
+정책 실행 중 관절 값이 조건에 닿으면 `episode_time` 전에 에피소드를 끝냅니다. 연동(`omx_packer`)에서 포장이 끝나자마자 다음 단계로 넘어가려고 씁니다.
+환경변수 `COUPING_EARLY_STOP`이 없으면 아무 동작도 하지 않고, 텔레옵·데이터 수집에는 영향이 없습니다(정책 실행 때만).
+
+```bash
+cd <LeRobot 저장소 루트>
+git apply <이 저장소 경로>/omx/lerobot_patch/early_stop.patch   # register.patch 다음에
+```
+
+| 환경변수 | 예 | 뜻 |
+|---|---|---|
+| `COUPING_EARLY_STOP` | `left_gripper.pos>=55:0@5` | 시작 5초 뒤부터 왼쪽 그리퍼 값이 55 이상이 되면 0초 뒤(즉시) 종료 |
+| `COUPING_EARLY_STOP_DRYRUN` | `1` | 끝내지 않고 판정만 출력, 값을 0.5초마다 출력 (기준값 정할 때) |
+
+형식은 `<관측 키><>= 또는 <=><값>[:<지연 초>][@<무시할 시작 초>]`이고, 관측 키는 `left_` / `right_` + 모터 이름 + `.pos`(0~100)입니다.
+현장 기준: 왼쪽 그리퍼는 벌릴수록 값이 커지고 최대로 벌리면 약 57, 시작 자세는 62 근처라 처음 5초는 무시합니다.
+종료되면 로그에 `[couping] ===== 작업 종료 (N초) =====`가 찍힙니다.
 
 ### 1-3. 시리얼 포트 권한과 포트 이름
 
