@@ -35,7 +35,7 @@ from sensor_msgs.msg import CameraInfo, CompressedImage, Image, LaserScan
 from std_msgs.msg import Bool, Int32
 from std_srvs.srv import Trigger
 
-from .controller import ControllerParams, DockingController, Phase
+from .controller import ACTIVE_PHASES, ControllerParams, DockingController, Phase
 from .estimator import DockingEstimate, DockingEstimator, EstimatorParams
 from .geometry import Pose2D, wrap_angle
 from .marker_detector import ArucoMarkerDetector, CameraExtrinsics, MarkerObservation
@@ -311,7 +311,14 @@ class PrecisionDockingNode(Node):
                 self.detector.set_intrinsics(K, D, (msg.width, msg.height), from_info=True)
                 self.get_logger().info(f'[Branch A] CameraInfo received: fx={K[0,0]:.1f}, cx={K[0,2]:.1f}, cy={K[1,2]:.1f}')
 
+    def _idle(self) -> bool:
+        """도킹 중이 아니고 디버그 영상 보는 곳도 없으면 True. 대기 중 영상·라이다 처리로 CPU 를 185% 쓰며
+        같은 핑키의 Nav2 를 굶겨 목표 응답이 시간 초과 나던 문제 (10/27). 도킹 시작 때 추정기는 reset 됨."""
+        return self.controller.phase not in ACTIVE_PHASES and self.debug_image_pub.get_subscription_count() == 0
+
     def _compressed_image_callback(self, msg: CompressedImage):
+        if self._idle():
+            return
         try:
             now = self._get_time_sec()
             self.last_compressed_rx_time = now
@@ -331,6 +338,8 @@ class PrecisionDockingNode(Node):
         self._image_callback(msg)
 
     def _image_callback(self, msg: Image):
+        if self._idle():
+            return
         try:
             now = self._get_time_sec()
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -384,6 +393,8 @@ class PrecisionDockingNode(Node):
         self._publish_debug(cv_image)
 
     def _scan_callback(self, msg: LaserScan):
+        if self._idle():
+            return
         now = self._get_time_sec()
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         if stamp <= 0.0 or abs(now - stamp) > 3.0:
