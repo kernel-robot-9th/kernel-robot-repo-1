@@ -158,14 +158,14 @@ local_costmap:
       height: 3
       resolution: 0.02   # 10/26: 0.025 -> 0.02 (맵 해상도와 같게, 좁은 통로 정밀도)
       # 10/26: 후방 적재판(Cargo Plate) 포함. 적재판이 없으면 '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
-      footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.19, -0.075], [-0.19, 0.075]]'
+      footprint: '[[0.08, 0.175], [0.08, -0.175], [-0.19, -0.175], [-0.19, 0.175]]'   # 10/27: 적재판 양옆 10cm씩 넓어짐 (폭 15 -> 35cm, 길이 27cm 그대로)
       plugins: ["obstacle_layer", "inflation_layer"]   # 10/26: voxel_layer 대신 2D 경량 obstacle_layer
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
         # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
         cost_scaling_factor: 10.0
-        inflation_radius: 0.15
+        inflation_radius: 0.20   # 10/27: 0.15 -> 0.20 (로봇 옆면까지 0.175m 보다 커야 경로가 벽에 몸이 닿지 않음)
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -195,7 +195,7 @@ global_costmap:
       transform_tolerance: 1.0   # 10/23: 기본 0.3s. Wi-Fi 지연으로 map->odom 이 늦어 "Failed to transform end pose" 로 중단되던 문제
       robot_base_frame: base_footprint
       # 10/26: 후방 적재판(Cargo Plate) 포함. 적재판이 없으면 '[[0.065, 0.065], [0.065, -0.065], [-0.065, -0.065], [-0.065, 0.065]]'
-      footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.19, -0.075], [-0.19, 0.075]]'
+      footprint: '[[0.08, 0.175], [0.08, -0.175], [-0.19, -0.175], [-0.19, 0.175]]'   # 10/27: 적재판 양옆 10cm씩 넓어짐 (폭 15 -> 35cm, 길이 27cm 그대로)
       resolution: 0.02   # 10/26: 0.025 -> 0.02 (맵 해상도와 같게, 좁은 통로 정밀도)
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
@@ -221,7 +221,7 @@ global_costmap:
         # 10/26: 폭 40cm 통로 통과용. 통로 가운데(벽에서 0.20m)가 비용 0 이 되도록 반경 0.15m,
         # 대신 벽 가까이에서 비용이 빨리 줄도록 scaling 10 (이전 0.20m/3.0 은 통로 전체가 고비용)
         cost_scaling_factor: 10.0
-        inflation_radius: 0.15
+        inflation_radius: 0.20   # 10/27: 0.15 -> 0.20 (로봇 옆면까지 0.175m 보다 커야 경로가 벽에 몸이 닿지 않음)
       always_send_full_costmap: True
 
 map_saver:
