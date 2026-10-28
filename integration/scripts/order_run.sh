@@ -11,7 +11,7 @@
 # 구역별 품목은 mission_bridge.py 의 ZONE_ITEMS (선반1 = tide·paper_towel·bath_tissue, 선반2 = carrot·tomato·salad).
 ORDER="${1:?주문 품목을 쉼표로 (예: tide,carrot)}"
 N="${2:-$(date +%m%d_%H%M%S)}"
-SHELF1="${SHELF1:-7}"
+SHELF1="${SHELF1:-9}"
 SHELF2="${SHELF2:-4}"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 L=~/couping_ws/logs
@@ -37,7 +37,7 @@ trap 'kill $BRIDGE 2>/dev/null' EXIT
 sleep 2
 
 T0=$(date +%s)
-python3 "$REPO/integration/tools/home_pose.py" || exit 1
+if [ "${HOME_FIT:-0}" = 1 ]; then python3 "$REPO/integration/tools/home_pose.py" || exit 1; else python3 "$REPO/integration/tools/set_home_pose.py"; fi
 
 shelf() {   # $1 = 마커 번호. 터미널 입력은 막아 둠 (빈 줄로 두산보다 먼저 떠나지 않게)
     ros2 run pinky_precision_docking run_arena_mission --step "$1" --no-home < <(sleep infinity) 2>&1 | tee "$L/order_${N}_m$1.log"
@@ -46,6 +46,6 @@ shelf() {   # $1 = 마커 번호. 터미널 입력은 막아 둠 (빈 줄로 두
 [ $NEED1 = 1 ] && shelf "$SHELF1"
 [ $NEED2 = 1 ] && shelf "$SHELF2"
 
-python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop $([ "${RETURN_HOME:-0}" = 1 ] || echo --no-return) 2>&1 | tee "$L/order_${N}_pack.log"
+python3 "$REPO/integration/scripts/pack_run.py" --after-pick --dock-node laptop $([ "${RETURN_HOME:-1}" = 1 ] || echo --no-return) 2>&1 | tee "$L/order_${N}_pack.log"
 grep -q "전체 완료" "$L/order_${N}_pack.log" || { echo "중단: 포장대 단계 실패"; exit 1; }
 echo "주문 $N 완료: $(( $(date +%s) - T0 ))초"

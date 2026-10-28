@@ -26,6 +26,8 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+from rcl_interfaces.msg import Parameter as RclParameter, ParameterType, ParameterValue
+from rcl_interfaces.srv import SetParameters
 from std_msgs.msg import Bool, Int32, String
 from std_srvs.srv import Trigger
 
@@ -49,13 +51,8 @@ WAYPOINTS = {
     'packaging': [0.7710, 0.2436, 0.0467], # Packaging Area Pre-docking (Marker 5), 10/27 실측값 (이전 0.724, 0.243, 0.107)
 }
 
-# 도착 판정 완화 (10/23): 이 거리(m) 안에 들어오면 Nav2 의 정밀 도착(xy 6cm) 을 기다리지 않고
-# 도착으로 보고, 남은 방향만 제자리 회전으로 맞춘다. 첫 번째 선반 진입 좌표에서 목표 근처를 맴돌다 실패하던 문제.
-ARRIVAL_TOLERANCE = {
-    'shelf1': 0.15,
-    'shelf1_m8': 0.15, 'shelf1_m9': 0.15, 'shelf1_m7': 0.15,   # 10/27: 마커별 좌표도 같은 방식
-    'shelf2': 0.15,   # 10/26: 선반2(마커 4·2) 진입도 같은 방식
-}
+# 도착 판정 완화 (10/28 비활성: Nav2 자체 GoalChecker 및 RPP 헤딩 정렬 사용)
+ARRIVAL_TOLERANCE = {}
 
 # Complete Arena Mission Stations: All 6 ArUco Markers across Area 1, 2, and 3
 # Actual Physical Environment Marker Layout:
@@ -72,7 +69,8 @@ ALL_STATIONS = [
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 A Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
-        'undock_dist': 0.50,
+        'dock_dist': 0.03,
+        'undock_dist': 0.25,
     },
     {
         'area': 'Shelf 1',
@@ -82,7 +80,8 @@ ALL_STATIONS = [
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 B Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',
-        'undock_dist': 0.50,
+        'dock_dist': 0.03,
+        'undock_dist': 0.25,
     },
     {
         'area': 'Shelf 1',
@@ -92,7 +91,8 @@ ALL_STATIONS = [
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 C Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
-        'undock_dist': 0.55,
+        'dock_dist': 0.03,
+        'undock_dist': 0.25,
     },
     # Area 2: Shelf 2 (Coolers & Refrigeration - 2 Coolers: Left=4, Right=2)
     {
@@ -103,7 +103,8 @@ ALL_STATIONS = [
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '냉장 부품 A Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf2',
-        'undock_dist': 0.60,
+        'dock_dist': 0.03,
+        'undock_dist': 0.45,
     },
     {
         'area': 'Shelf 2',
@@ -113,7 +114,8 @@ ALL_STATIONS = [
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '냉장 부품 B Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf2',
-        'undock_dist': 0.65,
+        'dock_dist': 0.03,
+        'undock_dist': 0.45,
     },
     # Area 3: Packaging Station (ROBOTIS OpenMANIPULATOR-X)
     {
@@ -124,13 +126,14 @@ ALL_STATIONS = [
         'robot_name': 'OpenMANIPULATOR-X (OMX 매니퓰레이터)',
         'task_type': '적재물 전체 하역 및 자동 포장 (Packaging)',
         'pre_docking': 'packaging',
-        'undock_dist': 0.35,
+        'dock_dist': 0.07,
+        'undock_dist': 0.30,
     },
 ]
 
 # Legacy Sample Stations (1 per area for quick test)
 SAMPLE_STATIONS = [
-    ALL_STATIONS[0],  # Shelf 1 Left (ID 8)
+    ALL_STATIONS[1],  # Shelf 1 Center (ID 9)
     ALL_STATIONS[3],  # Shelf 2 Left (ID 4)
     ALL_STATIONS[5],  # Packaging (ID 5)
 ]
@@ -159,6 +162,7 @@ class ArenaMissionController:
         self.target_id_pub = self.nav.create_publisher(Int32, '/docking/target_marker_id', 10)
         self.buzzer_cmd_pub = self.nav.create_publisher(String, '/pinky/buzzer/command', 10)
         self.start_dock_cli = self.nav.create_client(Trigger, '/docking/start')
+        self.dock_param_cli = self.nav.create_client(SetParameters, '/precision_docking_node/set_parameters')
 
         # Inter-robot external manipulator task integration
         self.task_trigger_pub = self.nav.create_publisher(String, '/pinky/station_task/trigger', 10)
@@ -281,9 +285,26 @@ class ArenaMissionController:
             print(f"[Nav2] 회전 결과: {self.nav.getResult()}")
         return True
 
-    def execute_docking(self, station_name: str, marker_id: int, timeout_sec: float = 120.0) -> bool:
+    def set_docking_target_distance(self, target_dist: float):
+        """Set target_distance parameter on /precision_docking_node."""
+        if not self.dock_param_cli.wait_for_service(timeout_sec=3.0):
+            print("[Docking Warning] /precision_docking_node/set_parameters service not available!")
+            return
+        req = SetParameters.Request()
+        p = RclParameter()
+        p.name = 'target_distance'
+        p.value = ParameterValue(type=ParameterType.PARAMETER_DOUBLE, double_value=float(target_dist))
+        req.parameters = [p]
+        future = self.dock_param_cli.call_async(req)
+        rclpy.spin_until_future_complete(self.nav, future, timeout_sec=2.0)
+        print(f"[Mission] Target docking distance set to {target_dist*100:.1f}cm.")
+
+    def execute_docking(self, station_name: str, marker_id: int, timeout_sec: float = 120.0,
+                        dock_dist: float = None) -> bool:
         """Execute precision docking to designated ArUco marker."""
         print(f"\n>>> [Docking] Starting Precision Docking at '{station_name}' to Marker ID {marker_id} (timeout: {timeout_sec:.0f}s)...")
+        if dock_dist is not None:
+            self.set_docking_target_distance(dock_dist)
         self.set_docking_marker_id(marker_id)
         time.sleep(0.1)
 
@@ -557,7 +578,8 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
 
             # Step 2: Precision Docking to ArUco Marker
             print(f"\n>>> [Stage {idx}-2] Precision Docking to Marker ID {station['marker_id']}...")
-            if not ctrl.execute_docking(station['station_name'], station['marker_id'], timeout_sec=dock_timeout):
+            if not ctrl.execute_docking(station['station_name'], station['marker_id'], timeout_sec=dock_timeout,
+                                        dock_dist=station.get('dock_dist')):
                 raise RuntimeError(f"Precision docking failed at {station['station_name']} (ID {station['marker_id']})")
 
             # Step 3: External Manipulator Task Execution

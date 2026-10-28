@@ -39,6 +39,8 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, Int32, String
+from rcl_interfaces.msg import Parameter as RclParameter, ParameterType, ParameterValue
+from rcl_interfaces.srv import SetParameters
 from std_srvs.srv import Trigger
 
 PINKY = 'pinky@192.168.111.102'
@@ -209,6 +211,12 @@ class Run:
         """노트북에 켜 둔 도킹 노드(v6.0)에 마커를 지정하고 시작 (팀원 run_arena_mission 과 같은 방식)."""
         t = time.time()
         self.spin(1.0)  # run_arena_mission 처럼 Nav2 도착 뒤 1초 대기
+        if self.dock_distance is not None:
+            p_req = SetParameters.Request()
+            p_msg = RclParameter(name="target_distance", value=ParameterValue(type=ParameterType.PARAMETER_DOUBLE, double_value=float(self.dock_distance)))
+            p_req.parameters = [p_msg]
+            self.call(SetParameters, "/precision_docking_node/set_parameters", p_req, timeout=5.0)
+            self.log(f"도킹 목표 거리 설정: {self.dock_distance*100:.1f}cm")
         for _ in range(3):
             self.dock_id_pub.publish(Int32(data=MARKER_ID))
             self.spin(0.01)
@@ -294,12 +302,12 @@ class Run:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dock-distance', type=float, default=0.10)
+    ap.add_argument('--dock-distance', type=float, default=0.07)
     ap.add_argument('--after-pick', action='store_true', help='선반 피킹(run_arena_mission) 뒤 이어서: home 확인 생략')
     ap.add_argument('--from-dock', action='store_true', help='포장대 앞에 둔 상태에서 도킹부터 시작')
     ap.add_argument('--dock-node', choices=('pinky', 'laptop'), default='pinky',
                     help='pinky: 핑키에서 v5 launch 실행(원래 방식) / laptop: 노트북에 켜 둔 v6.0 노드 사용')
-    ap.add_argument('--undock', type=float, default=0.35, help='OMX 뒤 포장대에서 후진 거리 m (팀원 미션 packaging 값)')
+    ap.add_argument('--undock', type=float, default=0.30, help='OMX 뒤 포장대에서 후진 거리 m (팀원 미션 packaging 값)')
     ap.add_argument('--no-return', action='store_true', help='OMX 뒤 home(P) 복귀 생략')
     args = ap.parse_args()
     run = Run(args.dock_distance, args.dock_node)
