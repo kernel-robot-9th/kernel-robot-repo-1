@@ -163,7 +163,7 @@ local_costmap:
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
       # Front body: width 150mm (y=±0.075m), Rear tray: width 280mm (y=±0.140m), Rear end: x=-0.28m
       footprint_padding: 0.0   # 10/28: 여유 없음
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.1215], [-0.153, -0.1215], [-0.153, 0.1215], [-0.063, 0.1215], [-0.063, 0.0585]]'   # 10/28: 실측(타이트) x 0.9 - 실물보다 10% 작게 (사용자 요청)
+      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.128], [-0.153, -0.128], [-0.153, 0.128], [-0.063, 0.128], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 적재판 좌우만 5% 늘림 (±0.1215 -> ±0.128)
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -194,7 +194,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_footprint
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.1215], [-0.153, -0.1215], [-0.153, 0.1215], [-0.063, 0.1215], [-0.063, 0.0585]]'   # 10/28: 실측(타이트) x 0.9 - 실물보다 10% 작게 (사용자 요청)
+      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.128], [-0.153, -0.128], [-0.153, 0.128], [-0.063, 0.128], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 적재판 좌우만 5% 늘림 (±0.1215 -> ±0.128)
       resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
       track_unknown_space: true
       plugins: ["static_layer", "inflation_layer"]   # 10/27: 라이다 장애물 층 뺌 - 위치·지연 오차로 잘못 찍힌 장애물이 경로 계획을 막던 문제. 실제 장애물은 로컬 코스트맵이 맡음
