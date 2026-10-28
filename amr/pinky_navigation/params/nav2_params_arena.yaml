@@ -97,9 +97,9 @@ controller_server:
 
       # 장애물 접근 시 감속 (Cost Regulated)
       use_cost_regulated_linear_velocity_scaling: true
-      cost_scaling_dist: 0.20
+      cost_scaling_dist: 0.10   # 10/28: 0.20 -> 0.10 (벽 10cm 안에서만 감속)
       cost_scaling_gain: 1.0
-      inflation_cost_scaling_factor: 10.0
+      inflation_cost_scaling_factor: 3.0   # 10/28: 코스트맵 cost_scaling_factor(3.0) 와 맞춤
 
       # 목적지 접근 시 감속 및 정렬
       approach_velocity_scaling_dist: 0.30
@@ -107,7 +107,7 @@ controller_server:
 
       # 안전 및 충돌 방지: 소형 아레나에서 오발동으로 인한 멈춤(Lock) 방지 위해 false
       use_collision_detection: true   # 10/28: 다시 켬 - 꺼져 있어 벽에 계속 부딪히고, 부딪힐 때 바퀴가 미끄러져 위치 추정이 깨지던 문제
-      max_allowed_time_to_collision_up_to_carrot: 1.0   # 10/28: 0.5 -> 1.0 (1초 안에 부딪힐 경로면 멈춤)
+      max_allowed_time_to_collision_up_to_carrot: 0.5   # 10/28: 1.0 -> 0.5 (충돌 예측을 덜 앞서 함)
       max_robot_pose_search_dist: 1.0
       transform_tolerance: 0.2
 
@@ -159,7 +159,7 @@ local_costmap:
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.025
+      resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
       # Front body: width 150mm (y=±0.075m), Rear tray: width 280mm (y=±0.140m), Rear end: x=-0.28m
       footprint_padding: 0.0   # 10/28: 여유 없음
@@ -181,8 +181,8 @@ local_costmap:
           obstacle_min_range: 0.08
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 7.5
-        inflation_radius: 0.20
+        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
+        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
       always_send_full_costmap: True
 
 global_costmap:
@@ -195,7 +195,7 @@ global_costmap:
       robot_base_frame: base_footprint
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
       footprint: '[[0.08, 0.065], [0.08, -0.065], [-0.07, -0.065], [-0.07, -0.135], [-0.17, -0.135], [-0.17, 0.135], [-0.07, 0.135], [-0.07, 0.065]]'   # 10/28: 타이트 - 실측 그대로 여유 없음 (뒤 170mm, 적재판 270x100, 몸체 130mm)
-      resolution: 0.025
+      resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
       track_unknown_space: true
       plugins: ["static_layer", "inflation_layer"]   # 10/27: 라이다 장애물 층 뺌 - 위치·지연 오차로 잘못 찍힌 장애물이 경로 계획을 막던 문제. 실제 장애물은 로컬 코스트맵이 맡음
       obstacle_layer:
@@ -217,8 +217,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 7.5
-        inflation_radius: 0.20
+        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
+        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
       always_send_full_costmap: True
 
 map_saver:
