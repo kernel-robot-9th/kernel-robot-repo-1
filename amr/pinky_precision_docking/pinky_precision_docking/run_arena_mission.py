@@ -71,7 +71,7 @@ ALL_STATIONS = [
         'marker_id': 8,
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 A Pick & Place (피킹 및 핑키 적재)',
-        'pre_docking': 'shelf1_m8',
+        'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
         'undock_dist': 0.50,
     },
     {
@@ -91,7 +91,7 @@ ALL_STATIONS = [
         'marker_id': 7,
         'robot_name': '두산 로봇팔 (Doosan Collaborative Robot)',
         'task_type': '부품 C Pick & Place (피킹 및 핑키 적재)',
-        'pre_docking': 'shelf1_m7',
+        'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
         'undock_dist': 0.55,
     },
     # Area 2: Shelf 2 (Coolers & Refrigeration - 2 Coolers: Left=4, Right=2)
