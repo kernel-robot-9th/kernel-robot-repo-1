@@ -39,7 +39,7 @@ from pinky_precision_docking.sound_effects import (
 
 # Arena Waypoints [x(m), y(m), yaw(rad)]
 WAYPOINTS = {
-    'home': [0.1200, 0.0000, 0.0000],
+    'home': [0.2300, 0.0300, 0.0000],   # 10/28: (0.12, 0, 0) -> 모서리에서 10cm 앞 (적재판 회전 여유)
     'shelf1': [0.6000, 1.4700, 3.1416],  # Shelf 1 Area Representative Pre-docking (Views all 3 bays: Left=8, Center=9, Right=7)
     # 10/27 핑키 인수인계 predock_poses.json 실측값 (마커별 400mm 전방)
     'shelf1_m8': [0.6090, 1.2586, -3.0861],

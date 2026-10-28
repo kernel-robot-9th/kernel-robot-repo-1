@@ -43,7 +43,7 @@ from std_srvs.srv import Trigger
 
 PINKY = 'pinky@192.168.111.102'
 MAP = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'amr', 'pinky_navigation', 'map', 'arena_map.pgm')
-HOME = (0.10, 0.24, 0.03)
+HOME = (0.23, 0.03, 0.0)  # 10/28: 미션 home 과 같게 (이전 0.10, 0.24, 0.03)
 PACK = (0.771, 0.2436, 0.0467)  # 두 OMX 사이 마커 5 를 바라보는 방향. 10/27 핑키 인수인계 실측값 (이전 0.97, 0.23, -0.30)
 MARKER_ID = 5
 # 팀원 README 의 실제 로봇 실행 명령 그대로 (마커 ID 만 현장 값)
