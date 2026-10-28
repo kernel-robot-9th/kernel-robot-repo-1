@@ -8,11 +8,11 @@
     # 자세는 ~/couping_ws/calib/poses.json (python3 -m couping.teach_pose front|place_above|place|place_2..)
     # 핑키 자세가 없을 때: return = 진열대 제자리에 도로 놓기(반복 시험), hold = front 에서 들고 대기(1품목만)
     no_place: return
-    vel: 150.0                  # 일반 직선 이동 mm/s (10/26 60 -> 150. 컵 근처는 vel_slow)
-    acc: 150.0                  # 일반 직선 가속 mm/s^2
+    vel: 300.0                  # 일반 직선 이동 mm/s (10/28 150 -> 300. 컵 근처는 vel_slow)
+    acc: 300.0                  # 일반 직선 가속 mm/s^2
     vel_slow: 20.0              # 컵 근처(전진·잡기·들기·빼기) mm/s - 조심해야 해서 그대로
-    velj: 60.0                  # 관절 이동 deg/s (10/26 30 -> 60)
-    accj: 60.0                  # 관절 가속 deg/s^2
+    velj: 150.0                 # 관절 이동 deg/s (10/28 60 -> 150, E0509 최고속도 180deg/s 대비 ~83%)
+    accj: 150.0                 # 관절 가속 deg/s^2
     open: 450                   # 접근할 때 그리퍼 열림 (0 닫힘 ~ 750 완전 열림)
     release: 450                # 내려놓을 때 여는 정도
     force: 300                  # 잡는 힘
@@ -32,7 +32,7 @@
     vote_ratio: 0.6             # 5장 중 3장 이상에서 보여야 인정
     min_depth_valid: 0.15       # 박스 안 깊이 유효 비율 (투명 컵은 20% 안팎)
     max_depth: 1.8              # 컵이 이보다 멀게 나오면 깊이 이상으로 보고 카메라를 다시 엶 (m)
-    usb2_fallback: true         # 카메라가 USB 2 로 잡히면 640x480 저해상도로라도 동작 (인식 정확도는 떨어짐)
+    usb2_fallback: false        # USB 2.1 로 떨어지면 hardware_reset() 으로 USB 3.0 복구
     usb2_offset_mm: [-52.0, 0.0, 0.0]   # USB 2 모드에서 로봇 좌표 보정 (1280x720 기준과 비교해 측정)
     camera_frame: camera_color_optical_frame
     preview_rate: 0.0           # 예: 2.0 이면 미리보기 그림을 2Hz 로 발행

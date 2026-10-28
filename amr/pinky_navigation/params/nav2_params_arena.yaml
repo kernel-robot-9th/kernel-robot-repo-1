@@ -99,7 +99,7 @@ controller_server:
       use_cost_regulated_linear_velocity_scaling: true
       cost_scaling_dist: 0.10   # 10/28: 0.20 -> 0.10 (벽 10cm 안에서만 감속)
       cost_scaling_gain: 1.0
-      inflation_cost_scaling_factor: 2.5   # 10/28: 코스트맵 cost_scaling_factor(2.5) 와 맞춤
+      inflation_cost_scaling_factor: 3.0   # 10/28: 코스트맵 cost_scaling_factor(3.0) 와 맞춤
 
       # 목적지 접근 시 감속 및 정렬
       approach_velocity_scaling_dist: 0.30
@@ -163,7 +163,7 @@ local_costmap:
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
       # Front body: width 150mm (y=±0.075m), Rear tray: width 280mm (y=±0.140m), Rear end: x=-0.28m
       footprint_padding: 0.0   # 10/28: 여유 없음
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.128], [-0.153, -0.128], [-0.153, 0.128], [-0.063, 0.128], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 적재판 좌우만 5% 늘림 (±0.1215 -> ±0.128)
+      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.099], [-0.153, -0.099], [-0.153, 0.126], [-0.063, 0.126], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 비대칭 적재판 반영 (왼쪽 +y: 140mm*0.9=0.126, 오른쪽 -y: 110mm*0.9=0.099)
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -181,8 +181,8 @@ local_costmap:
           obstacle_min_range: 0.08
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.5   # 10/28: 3.0 -> 2.5 (벽 비용 완만하게 유지해 코너 중앙 유도 강화)
-        inflation_radius: 0.35   # 10/28: 0.25 -> 0.35 (넓은 코너에서도 양쪽 벽 비용이 겹쳐 크게 돌게)
+        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
+        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
       always_send_full_costmap: True
 
 global_costmap:
@@ -194,7 +194,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_footprint
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.128], [-0.153, -0.128], [-0.153, 0.128], [-0.063, 0.128], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 적재판 좌우만 5% 늘림 (±0.1215 -> ±0.128)
+      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.099], [-0.153, -0.099], [-0.153, 0.126], [-0.063, 0.126], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 비대칭 적재판 반영 (왼쪽 +y: 140mm*0.9=0.126, 오른쪽 -y: 110mm*0.9=0.099)
       resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
       track_unknown_space: true
       plugins: ["static_layer", "inflation_layer"]   # 10/27: 라이다 장애물 층 뺌 - 위치·지연 오차로 잘못 찍힌 장애물이 경로 계획을 막던 문제. 실제 장애물은 로컬 코스트맵이 맡음
@@ -217,8 +217,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.5   # 10/28: 3.0 -> 2.5 (벽 비용 완만하게 유지해 코너 중앙 유도 강화)
-        inflation_radius: 0.35   # 10/28: 0.25 -> 0.35 (넓은 코너에서도 양쪽 벽 비용이 겹쳐 크게 돌게)
+        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
+        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
       always_send_full_costmap: True
 
 map_saver:

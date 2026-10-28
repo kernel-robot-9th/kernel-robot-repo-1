@@ -278,8 +278,8 @@ class ShelfVision(Node):
                 self.cam = ImageFolder(d) if d else RealSense(self.p('width'), self.p('height'), self.p('fps'),
                                                                      usb2_ok=self.p('usb2_fallback'))
                 self.get_logger().info(f'입력 연결: {self.cam.name}. /couping/vision/detect 대기 중')
-            except UsbTooSlow as e:  # 리셋하면 대부분 USB 3 로 다시 잡힘 (30초에 한 번만)
-                if time.monotonic() - getattr(self, '_last_reset', -1e9) > 30.0:
+            except UsbTooSlow as e:  # 리셋하면 대부분 USB 3 로 다시 잡힘 (10초에 한 번만)
+                if time.monotonic() - getattr(self, '_last_reset', -1e9) > 10.0:
                     self._last_reset = time.monotonic()
                     self.get_logger().warn(f'{e} → 카메라를 리셋합니다 (계속되면 다시 꽂아 주세요)')
                     try:
@@ -386,6 +386,9 @@ class ShelfVision(Node):
             self.get_logger().warn(f'{out} → 카메라를 다시 열고 한 번 더 인식')
             time.sleep(1.0)
             self.open_camera()
+            if self.cam is None:  # hardware_reset() 직후 재열거 대기
+                time.sleep(4.0)
+                self.open_camera()
             ok, out = self.detect_once()
         if ok and self.depth_broken(out['items']):
             self.drop_camera(f"깊이 이상 (컵 거리 중앙값 > {self.p('max_depth')} m) → 카메라 다시 열기")

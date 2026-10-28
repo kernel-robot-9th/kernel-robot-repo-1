@@ -125,8 +125,7 @@ def main(args=None):
                     raise pick_core.PickError('물건을 들고 있어 다음 품목을 집을 수 없습니다 '
                                               '(no_place: return 으로 바꾸거나 핑키 자세 저장)')
         finally:
-            if dsr and start_mode == dsr.ROBOT_MODE_MANUAL:
-                dsr.set_robot_mode(dsr.ROBOT_MODE_MANUAL)  # 시작 전처럼 직접교시 가능하게
+            pass  # 항상 AUTONOMOUS(자동) 모드 유지 (수동 모드 복귀 시 그리퍼/DRL 멈춤 방지)
         if skipped:
             raise pick_core.PickError('못 집은 품목: ' + ', '.join(catalog.label(s) for s in skipped))
 

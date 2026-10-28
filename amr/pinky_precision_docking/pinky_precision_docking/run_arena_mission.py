@@ -104,7 +104,7 @@ ALL_STATIONS = [
         'task_type': '냉장 부품 A Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf2',
         'dock_dist': 0.03,
-        'undock_dist': 0.45,
+        'undock_dist': 0.675,
     },
     {
         'area': 'Shelf 2',
@@ -115,7 +115,7 @@ ALL_STATIONS = [
         'task_type': '냉장 부품 B Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf2',
         'dock_dist': 0.03,
-        'undock_dist': 0.45,
+        'undock_dist': 0.675,
     },
     # Area 3: Packaging Station (ROBOTIS OpenMANIPULATOR-X)
     {

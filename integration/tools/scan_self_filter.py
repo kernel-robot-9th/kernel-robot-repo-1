@@ -13,7 +13,7 @@ from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformListener
 
 MARGIN = 0.01
-FRONT, BODY_HALF, PLATE_START, REAR, PLATE_HALF = 0.08, 0.065, -0.07, -0.17, 0.135   # 10/28 타이트 footprint 와 같게
+FRONT, BODY_HALF, PLATE_START, REAR, PLATE_LEFT, PLATE_RIGHT = 0.08, 0.065, 0.00, -0.17, 0.145, 0.115   # 10/28 비대칭 적재판 실측 (+y 왼쪽 140mm, -y 오른쪽 110mm, 앞모서리 bx=-0.015 포함)
 
 
 def main():
@@ -37,8 +37,9 @@ def main():
         a = m.angle_min + np.arange(len(r)) * m.angle_increment + mount['yaw']
         bx = mount['x'] + r * np.cos(a)
         by = mount['y'] + r * np.sin(a)
-        half = np.where(bx < PLATE_START, PLATE_HALF, BODY_HALF) + MARGIN
-        self_hit = (bx < FRONT + MARGIN) & (bx > REAR - MARGIN) & (np.abs(by) < half)
+        left_lim = np.where(bx < PLATE_START, PLATE_LEFT, BODY_HALF) + MARGIN
+        right_lim = np.where(bx < PLATE_START, PLATE_RIGHT, BODY_HALF) + MARGIN
+        self_hit = (bx < FRONT + MARGIN) & (bx > REAR - MARGIN) & (by < left_lim) & (by > -right_lim)
         r[self_hit] = np.inf
         out = m
         out.ranges = r.tolist()

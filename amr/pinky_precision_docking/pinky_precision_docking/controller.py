@@ -83,16 +83,16 @@ class ControllerParams:
     camera_hfov_deg: float = 66.0
     fov_margin_deg: float = 7.0
     # velocity limits / dynamics
-    v_max: float = 0.08
-    v_terminal_max: float = 0.04
+    v_max: float = 0.12
+    v_terminal_max: float = 0.07
     v_min: float = 0.006
-    v_retreat: float = 0.04
+    v_retreat: float = 0.06
     w_max: float = 0.6
     w_min: float = 0.05
-    w_search: float = 0.35
-    a_lin: float = 0.25                 # command smoother limits
+    w_search: float = 0.25
+    a_lin: float = 0.35                 # command smoother limits
     a_ang: float = 1.5
-    a_dec_lin: float = 0.06             # profile deceleration for stopping
+    a_dec_lin: float = 0.10             # profile deceleration for stopping
     a_dec_ang: float = 0.8
     k_heading: float = 2.2
     # stage 1: intercept
@@ -105,7 +105,7 @@ class ControllerParams:
     max_retreat_distance: float = 0.65  # rotation centre -> wall, upper bound for backing off
     allow_retreat: bool = True          # True: allow backing off when near wall, capped by initial start position
     # stage 2: verification
-    settle_time: float = 0.5
+    settle_time: float = 0.3
     verify_min_cam_updates: int = 3
     verify_timeout: float = 2.5
     # stage 3: terminal
@@ -466,7 +466,7 @@ class DockingController:
             v = clamp(math.sqrt(2.0 * p.a_dec_lin * dist_s), 0.025, p.v_max)
             # Gentle slowdown as we near the centerline to avoid overshooting
             if abs(est.y) < 0.08:
-                v = min(v, 0.035)
+                v = min(v, 0.06)
             v *= clamp(1.0 - abs(err) / math.radians(35.0), 0.0, 1.0)
             self.target = {'psi_cmd': psi_cmd, 'fov_limited': limited,
                            'staging_distance': stage_d}
@@ -517,7 +517,7 @@ class DockingController:
             psi_ref = sat(-est.y / p.fine_lookahead, psi_lim)
             w = sat(p.k_heading * (psi_ref - est.psi), p.w_max * 0.5)
             v = min(p.v_terminal_max, math.sqrt(2.0 * p.a_dec_lin * max(remain, 0.0)),
-                    0.8 * remain + 0.004)
+                    1.2 * remain + 0.008)
             v = max(v, p.v_min)
             self.target = {'psi_cmd': psi_ref, 'psi_lim': psi_lim, 'remain': remain}
             return v, w

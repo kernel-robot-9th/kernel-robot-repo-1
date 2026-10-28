@@ -13,6 +13,7 @@
     cam_fourcc: MJPG            # 이 노트북은 카메라 3대가 USB 2 허브 하나에 있어 압축(MJPG)해야 영상이 나옴
     task: Packaging the box     # 학습 때 문장과 같게
     episode_time: 60
+    early_stop: "left_gripper.pos>=55:0@5"   # 왼팔 그리퍼 값 도달 시 OMX 추론 조기 종료
     ports: [/dev/left_omx_follower, /dev/right_omx_follower]   # signal_only 때 확인
     fake_seconds: 5.0           # fake:=true 일 때 OMX 대신 기다리는 시간
 
@@ -42,7 +43,7 @@
     zone_a_items: [bath_tissue, tide, paper_towel]
     zone_b_marker: 4                     # 선반 2번(로마 숫자 구역) 중 4번
     zone_b_pose: [1.110, 1.500, -1.5708]
-    zone_b_undock: 0.60
+    zone_b_undock: 0.675
     zone_b_items: [tomato, carrot, salad]
     pack_marker: 5                       # OMX 포장 구역
     pack_pose: [0.724, 0.243, 0.107]

@@ -9,6 +9,7 @@ HEAD_CAM=${HEAD_CAM:-/dev/video8}
 EPISODE_TIME=${EPISODE_TIME:-60}
 TASK=${TASK:-"Packaging the box"}
 CAM_FOURCC=${CAM_FOURCC:-}   # 비우면 기본 형식. 예: MJPG (USB 2 허브 하나에 카메라 3대면 기본 형식으론 대역폭이 모자라 영상이 안 나옴)
+export COUPING_EARLY_STOP=${COUPING_EARLY_STOP:-"left_gripper.pos>=55:0@5"}
 # ===================
 FOURCC_OPT=""
 [ -n "$CAM_FOURCC" ] && FOURCC_OPT=", fourcc: $CAM_FOURCC"

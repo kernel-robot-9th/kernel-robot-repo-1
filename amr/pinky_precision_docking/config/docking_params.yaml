@@ -44,9 +44,9 @@ precision_docking_node:
     kp_linear: 0.55
     kp_lateral: 1.8
     kp_angular: 1.8
-    max_linear_vel: 0.08
+    max_linear_vel: 0.12
     min_linear_vel: 0.02
-    max_angular_vel: 0.30
+    max_angular_vel: 0.45
     min_angular_vel: 0.03
     invert_angular: false
     enable_wide_turn: false
@@ -57,7 +57,7 @@ precision_docking_node:
     ema_alpha: 0.6                    # 지터 제거용 EMA 필터 가중치
     loss_timeout: 0.8                 # 마커 소실 판정 시간 (초)
     lidar_timeout: 0.6                # LiDAR 데이터 유효 시간 (초)
-    search_angular_vel: 0.15          # SEARCH 상태 회전 속도 (rad/s)
+    search_angular_vel: 0.25          # SEARCH 상태 회전 속도 (rad/s)
     recovery_backup_speed: -0.04      # RECOVERY/재정렬 후진 속도 (m/s)
     recovery_backup_distance: 0.08    # RECOVERY 최대 후진 거리 (m)
     recovery_backup_duration: 2.0     # RECOVERY 후진 최대 지속 시간 (초)
