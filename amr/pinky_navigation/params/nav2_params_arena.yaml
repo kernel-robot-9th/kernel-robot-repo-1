@@ -169,7 +169,7 @@ local_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: /scan
+          topic: /scan_filtered   # 10/28: 핑키 자기 몸(적재판) 점 지운 라이다 (integration/tools/scan_self_filter.py). 되돌리기: /scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
