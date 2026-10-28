@@ -217,7 +217,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 7.5
-        inflation_radius: 0.20
+        inflation_radius: 0.25   # 10/28: Smac 은 로봇 외접 반경(0.231)보다 커야 빠른 footprint 충돌 검사 사용
       always_send_full_costmap: True
 
 map_saver:
