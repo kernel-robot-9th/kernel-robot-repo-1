@@ -162,7 +162,8 @@ local_costmap:
       resolution: 0.025
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
       # Front body: width 150mm (y=±0.075m), Rear tray: width 280mm (y=±0.140m), Rear end: x=-0.28m
-      footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.075, -0.075], [-0.075, -0.14], [-0.175, -0.14], [-0.175, 0.14], [-0.075, 0.14], [-0.075, 0.075]]'   # 10/28: 실측 - 바퀴 축에서 적재판 맨 뒤 170mm (+5mm 여유), 적재판 270x100 (폭 ±0.14)
+      footprint_padding: 0.0   # 10/28: 여유 없음
+      footprint: '[[0.08, 0.065], [0.08, -0.065], [-0.07, -0.065], [-0.07, -0.135], [-0.17, -0.135], [-0.17, 0.135], [-0.07, 0.135], [-0.07, 0.065]]'   # 10/28: 타이트 - 실측 그대로 여유 없음 (뒤 170mm, 적재판 270x100, 몸체 130mm)
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -187,13 +188,13 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint_padding: 0.005
+      footprint_padding: 0.0   # 10/28: 여유 없음
       update_frequency: 1.0
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_footprint
       # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
-      footprint: '[[0.08, 0.075], [0.08, -0.075], [-0.075, -0.075], [-0.075, -0.14], [-0.175, -0.14], [-0.175, 0.14], [-0.075, 0.14], [-0.075, 0.075]]'   # 10/28: 실측 - 바퀴 축에서 적재판 맨 뒤 170mm (+5mm 여유), 적재판 270x100 (폭 ±0.14)
+      footprint: '[[0.08, 0.065], [0.08, -0.065], [-0.07, -0.065], [-0.07, -0.135], [-0.17, -0.135], [-0.17, 0.135], [-0.07, 0.135], [-0.07, 0.065]]'   # 10/28: 타이트 - 실측 그대로 여유 없음 (뒤 170mm, 적재판 270x100, 몸체 130mm)
       resolution: 0.025
       track_unknown_space: true
       plugins: ["static_layer", "inflation_layer"]   # 10/27: 라이다 장애물 층 뺌 - 위치·지연 오차로 잘못 찍힌 장애물이 경로 계획을 막던 문제. 실제 장애물은 로컬 코스트맵이 맡음

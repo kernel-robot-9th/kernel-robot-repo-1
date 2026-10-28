@@ -13,7 +13,7 @@ from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformListener
 
 MARGIN = 0.01
-FRONT, BODY_HALF, PLATE_START, REAR, PLATE_HALF = 0.08, 0.075, -0.075, -0.175, 0.14
+FRONT, BODY_HALF, PLATE_START, REAR, PLATE_HALF = 0.08, 0.065, -0.07, -0.17, 0.135   # 10/28 타이트 footprint 와 같게
 
 
 def main():
