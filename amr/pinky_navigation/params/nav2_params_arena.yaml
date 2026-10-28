@@ -247,7 +247,7 @@ planner_server:
       angle_quantization_bins: 72         # 5도 단위
       analytic_expansion_ratio: 3.5
       analytic_expansion_max_length: 0.5
-      minimum_turning_radius: 0.08        # 핑키는 제자리 회전 가능 -> 아주 작게
+      minimum_turning_radius: 0.25        # 10/28: 0.08 -> 0.25 (앞으로 나가며 둥글게 돌게. 출발 때 제자리 회전으로 적재판이 벽을 치던 문제)
       reverse_penalty: 2.5                # 후진은 되도록 피함
       change_penalty: 0.0
       non_straight_penalty: 1.2
