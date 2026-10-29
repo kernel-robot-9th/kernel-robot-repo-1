@@ -68,6 +68,8 @@ def generate_launch_description():
         DeclareLaunchArgument('vision', default_value='false', description='진열대 비전 노드 실행 (RealSense + YOLO)'),
         DeclareLaunchArgument('web', default_value='true', description='고객·관리자 웹 화면 (http://<IP>:8080/, /admin)'),
         DeclareLaunchArgument('web_port', default_value='8080'),
+        DeclareLaunchArgument('orchestrator', default_value='true',
+                              description='주문 오케스트레이터 (웹 주문을 tools/web_order_run.py → order_run.sh 로 돌릴 땐 false)'),
 
         dsr_bringup,
         # GroupAction 으로 감싸야 vision.launch 에 넘긴 config(두산 설정)가 바깥 'config'(연동 설정)를 덮어쓰지 않음
@@ -98,5 +100,6 @@ def generate_launch_description():
                                   'enable_pinky': ParameterValue(LaunchConfiguration('pinky'), value_type=bool),
                                   'docking': ParameterValue(LaunchConfiguration('docking'), value_type=bool),
                                   'enable_packer': ParameterValue(omx, value_type=bool),
-                                  'manual_transfer': ParameterValue(LaunchConfiguration('manual_transfer'), value_type=bool)}]),
+                                  'manual_transfer': ParameterValue(LaunchConfiguration('manual_transfer'), value_type=bool)}],
+             condition=IfCondition(LaunchConfiguration('orchestrator'))),
     ])

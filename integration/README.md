@@ -69,3 +69,27 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 7. 포장·복귀 (선반 미션이 끝난 뒤, OMX packer 실행 중): `python3 integration/scripts/pack_run.py --after-pick --dock-node laptop`
    - 포장대 주행 → 마커 5 도킹(노트북 v6.0 노드) → OMX `start`/`done` → 후진 0.35m → home(P) 복귀
    - 옵션 없이 실행하면 원래대로 home 확인부터 시작하고 핑키에서 v5 도킹을 띄움
+
+## 10/29 웹 주문 → `order_run.sh` (`tools/web_order_run.py`)
+
+`order_run.sh tide,carrot` 를 터미널에서 치던 것을 고객 화면 주문으로 대신한다.
+`web_order_run.py` 가 웹 UI 주문(`/couping/order`)을 받아 한 건씩 `order_run.sh <품목> web<주문번호>_<시각>` 을 실행하고,
+출력 문구로 단계를 읽어 `/couping/order/status` 로 보낸다 (주문 확인 → 상품 담는 중 → 포장 → 배송 → 완료/실패).
+
+| order_run.sh 출력 | 화면 단계 |
+|---|---|
+| `STARTING PINKY` (선반 미션 출발) | `MOVING_TO_PICK` |
+| `[STATION TASK]` (선반 도킹 끝, 두산 시작) | `PICKING` |
+| `선반에서 이어서 출발` (pack_run 시작) | `MOVING_TO_PACK` |
+| `OMX 포장 시작` | `PACKING` |
+| `home(P)(으)로 출발` | `RETURNING` |
+| 종료 코드 0 / 그 밖 | `DONE` / `ERROR` (마지막 `중단:` 줄) |
+
+모든 터미널은 `order_run.sh` 와 같은 도메인으로 (`source ~/couping_ws/dds_env.sh <핑키 번호>`).
+1. 두산·비전·OMX packer·Nav2·핑키 bringup/도킹 노드는 `order_run.sh` 때와 같이 미리 띄운다
+2. 웹 UI (오케스트레이터 끔, 두산 picker·OMX 를 이미 따로 띄웠으면 `doosan:=false omx:=false`):
+   `ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false docking:=false orchestrator:=false doosan:=false omx:=false`
+3. `PINKY=<핑키 번호> python3 integration/tools/web_order_run.py` (`RETURN_HOME`·`SHELF1`·`SHELF2`·`HOME_FIT` 도 그대로 넘어감)
+4. 고객 화면 `http://<노트북 IP>:8080/` 에서 주문. 주문이 여러 건이면 앞 주문이 home 으로 돌아온 뒤 다음 주문 시작
+
+로봇 없이 시험: `--order-run <가짜 스크립트>` 로 order_run.sh 대신 같은 문구를 찍는 스크립트를 넘긴다.
