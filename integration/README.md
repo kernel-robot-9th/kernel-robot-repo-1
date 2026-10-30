@@ -93,3 +93,30 @@ ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=
 4. 고객 화면 `http://<노트북 IP>:8080/` 에서 주문. 주문이 여러 건이면 앞 주문이 home 으로 돌아온 뒤 다음 주문 시작
 
 로봇 없이 시험: `--order-run <가짜 스크립트>` 로 order_run.sh 대신 같은 문구를 찍는 스크립트를 넘긴다.
+
+## 10/30 Gazebo 디지털 트윈 (실제 로봇 따라 움직이기 + 관리자 화면)
+
+실제 핑키·두산·OMX 움직임을 Gazebo 가상 공장에 그대로 따라 하게 하고, 그 화면을 관리자 화면 카메라 칸('시뮬레이션')에 띄운다.
+
+| 실제 | 트윈이 받는 것 | 받는 코드 (`sim/pinky_gz_sim_twin`) |
+|---|---|---|
+| 핑키 위치 | `/amcl_pose`, `/odom` (domain_bridge 로 로봇 도메인 → 시뮬 도메인 10) | `mirror_pinky_pose.py` |
+| 두산 관절 | `/dsr01/joint_states` (같은 domain_bridge) | `mirror_dsr_arm.py` (핑키 위 축소 e0509) |
+| OMX 양팔 | LeRobot 이 UDP 로 보낸 관절 값 (`OMX_SIM_UDP` 가 있을 때만) | `omx_udp_bridge.py` |
+| 관리자 화면 | 트윈 위 카메라 `/camera` → `/couping/sim/image/compressed` → `/sim.mjpg` | `couping_integration/sim_camera.py` |
+
+**처음 한 번 설치** (트윈을 띄울 노트북에서. `~/pinky_pro`, `~/doosan_ws` 가 있어야 함)
+```bash
+sudo apt install ros-jazzy-domain-bridge
+bash sim/pinky_gz_sim_twin/install.sh
+```
+
+**실행** (10/29 실행 순서에 더함. 핑키 2호기 예시, 모든 터미널 `source ~/couping_ws/dds_env.sh 2`)
+1. ③ 웹 화면 launch 에 `sim_view:=true` 를 붙이고, 앞에 `OMX_SIM_UDP=127.0.0.1:5005` 를 붙인다
+   `OMX_SIM_UDP=127.0.0.1:5005 ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false docking:=false vision:=true orchestrator:=false sim_view:=true`
+2. 트윈: `source ~/pinky_pro/install/setup.bash && ros2 launch couping_integration twin.launch.py real_domain:=2`
+3. 관리자 화면 카메라 칸에서 '시뮬레이션' → '화면 켜기'
+
+- 트윈을 다른 노트북에서 띄우면: 그 노트북에서 2번 + `sim_view` 대신 `ros2 run couping_integration sim_camera` 를 같은 도메인으로,
+  OMX 는 `OMX_SIM_UDP=<트윈 노트북 IP>:5005` 와 2번에 `omx_udp_bind:=0.0.0.0`
+- 트윈 좌표는 arena_map 벽을 Gazebo 월드 벽에 맞춘 보정값(`twin.launch.py` ARENA_OFFSET, 평균 오차 약 2cm)

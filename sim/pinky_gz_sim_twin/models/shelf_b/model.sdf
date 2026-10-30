@@ -1,0 +1,28 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name='shelf_b'>
+    <pose>0 0 0 0 0 0</pose>
+    <self_collide>true</self_collide>
+    <link name='shelf_base'>
+      <pose>0 0 0 0 0 0</pose>
+      <collision name='shelf_chassi_collision'>
+        <pose>0 0 0.18 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.43 0.10 0.36</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name='shelf_chassi_visual'>
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.023889 0.05 0.06</scale>
+            <uri>meshes/shelf_big_movai.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <static>1</static>
+  </model>
+</sdf>

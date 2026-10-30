@@ -1,0 +1,19 @@
+# domain_bridge 설정: 실제 도메인(0) -> 시뮬 도메인(10), 한 방향만 전달.
+# 시뮬 쪽 토픽(/tf, /scan, /odom ...)이 실제 핑키와 섞이지 않도록 도메인을 분리해 두고
+# 아래 토픽만 골라서 가져온다.
+name: pinky_link
+from_domain: 0
+to_domain: 10
+topics:
+  /amcl_pose:
+    type: geometry_msgs/msg/PoseWithCovarianceStamped
+    qos:
+      reliability: reliable
+      durability: transient_local
+      history: keep_last
+      depth: 1
+  /dsr01/joint_states:
+    type: sensor_msgs/msg/JointState
+  /odom:
+    type: nav_msgs/msg/Odometry
+    remap: /real/odom   # 시뮬 자신의 /odom 과 이름이 겹치지 않게

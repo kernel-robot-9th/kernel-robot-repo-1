@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+<!--
+  e0509_mini : Doosan e0509 축소 모델 (Gazebo 표시용, 충돌 없음)
+
+  - 원본 macro.e0509.white.xacro 의 링크/관절 구조와 메시를 그대로 쓰되
+    * 모든 링크/관절 이름에 prefix(기본 arm_) 를 붙여 Pinky 와 이름이 겹치지 않게 함
+    * 길이 scale 배, 질량 scale^3 배, 관성 scale^5 배로 축소
+    * 충돌(collision) 은 넣지 않음 (보여 주는 용도 + dartsim 은 메시 충돌 미지원)
+  - 관절 6개는 gz_ros2_control (position 명령) 로 제어
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- 메시 1개 (원본 메시는 mm 단위라 0.001 * scale) -->
+  <xacro:macro name="mini_visual" params="file scale">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://dsr_description2/meshes/e0509_white/${file}"
+              scale="${0.001*scale} ${0.001*scale} ${0.001*scale}"/>
+      </geometry>
+      <material name="e0509_mini_white"/>
+    </visual>
+  </xacro:macro>
+
+  <!-- 링크 1개 (질량/관성 축소 포함, 메시는 여러 개를 **visuals 블록으로 받음) -->
+  <xacro:macro name="mini_link" params="name scale mass cx cy cz ixx ixy ixz iyy iyz izz **visuals">
+    <link name="${name}">
+      <inertial>
+        <origin xyz="${cx*scale} ${cy*scale} ${cz*scale}" rpy="0 0 0"/>
+        <mass value="${mass*scale**3}"/>
+        <inertia ixx="${ixx*scale**5}" ixy="${ixy*scale**5}" ixz="${ixz*scale**5}"
+                 iyy="${iyy*scale**5}" iyz="${iyz*scale**5}" izz="${izz*scale**5}"/>
+      </inertial>
+      <xacro:insert_block name="visuals"/>
+    </link>
+  </xacro:macro>
+
+  <!-- 회전 관절 1개 -->
+  <xacro:macro name="mini_joint" params="name parent child x y z r p yw scale lower upper velocity">
+    <joint name="${name}" type="revolute">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <origin xyz="${x*scale} ${y*scale} ${z*scale}" rpy="${r} ${p} ${yw}"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${lower}" upper="${upper}" effort="5" velocity="${velocity}"/>
+      <dynamics friction="0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ros2_control 관절 1개 (position 명령만) -->
+  <xacro:macro name="mini_ros2_joint" params="name">
+    <joint name="${name}">
+      <command_interface name="position">
+        <param name="min">-6.2832</param>
+        <param name="max">6.2832</param>
+      </command_interface>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <!--
+    parent : 팔 베이스를 붙일 링크 이름
+    xyz/rpy: parent 기준 장착 위치/방향
+    scale  : 축소 배율
+    prefix : 링크/관절 이름 접두어
+  -->
+  <xacro:macro name="e0509_mini" params="parent xyz:='0 0 0' rpy:='0 0 0' scale:=0.2 prefix:=arm_">
+
+    <material name="e0509_mini_white">
+      <color rgba="0.93 0.93 0.93 1"/>
+    </material>
+
+    <!-- Pinky 에 고정 -->
+    <joint name="${prefix}mount_fixed_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <!-- base -->
+    <xacro:mini_link name="${prefix}base_link" scale="${scale}" mass="1.803"
+        cx="2.7e-05" cy="-0.002651" cz="0.035122"
+        ixx="0.010608" ixy="1.7706e-06" ixz="6.6982e-06" iyy="0.0092656" iyz="-4.7833e-05" izz="0.0092125">
+      <visuals>
+        <xacro:mini_visual file="E0509_0_0.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_1 / link_1 -->
+    <xacro:mini_joint name="${prefix}joint_1" parent="${prefix}base_link" child="${prefix}link_1"
+        x="0" y="0" z="0.2045" r="0" p="0" yw="0" scale="${scale}"
+        lower="-6.2832" upper="6.2832" velocity="3.1416"/>
+    <xacro:mini_link name="${prefix}link_1" scale="${scale}" mass="5.75"
+        cx="1e-06" cy="0.049633" cz="-0.049635"
+        ixx="0.046214" ixy="1.4982e-05" ixz="1.281e-05" iyy="0.032573" iyz="-0.013997" izz="0.030999">
+      <visuals>
+        <xacro:mini_visual file="E0509_1_1.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_1_2.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_1_3.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_1_4.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_2 / link_2 -->
+    <xacro:mini_joint name="${prefix}joint_2" parent="${prefix}link_1" child="${prefix}link_2"
+        x="0" y="0" z="0" r="0" p="-1.5708" yw="-1.5708" scale="${scale}"
+        lower="-6.2832" upper="6.2832" velocity="3.1416"/>
+    <xacro:mini_link name="${prefix}link_2" scale="${scale}" mass="3.461"
+        cx="0.18647" cy="-1.1418e-17" cz="0.17311"
+        ixx="0.012039" ixy="7.7771e-06" ixz="3.7559e-06" iyy="0.091203" iyz="3.1825e-06" izz="0.094721">
+      <visuals>
+        <xacro:mini_visual file="E0509_2_1.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_2_2.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_3 / link_3 -->
+    <xacro:mini_joint name="${prefix}joint_3" parent="${prefix}link_2" child="${prefix}link_3"
+        x="0.373" y="0" z="0" r="0" p="0" yw="1.5708" scale="${scale}"
+        lower="-2.7053" upper="2.7053" velocity="3.1416"/>
+    <xacro:mini_link name="${prefix}link_3" scale="${scale}" mass="4.582"
+        cx="1.2e-05" cy="-0.02919" cz="0.062355"
+        ixx="0.032606" ixy="6.548e-06" ixz="-6.9939e-07" iyy="0.024211" iyz="-0.0079929" izz="0.019284">
+      <visuals>
+        <xacro:mini_visual file="E0509_3_1.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_3_2.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_4 / link_4 -->
+    <xacro:mini_joint name="${prefix}joint_4" parent="${prefix}link_3" child="${prefix}link_4"
+        x="0" y="-0.373" z="0" r="1.5708" p="0" yw="0" scale="${scale}"
+        lower="-6.2832" upper="6.2832" velocity="3.927"/>
+    <xacro:mini_link name="${prefix}link_4" scale="${scale}" mass="2.207"
+        cx="4e-06" cy="0.095573" cz="-0.12813"
+        ixx="0.03547" ixy="8.0794e-06" ixz="7.9905e-06" iyy="0.030841" iyz="-0.011996" izz="0.019615">
+      <visuals>
+        <xacro:mini_visual file="E0509_4_1.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_4_2.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_5 / link_5 -->
+    <xacro:mini_joint name="${prefix}joint_5" parent="${prefix}link_4" child="${prefix}link_5"
+        x="0" y="0" z="0" r="-1.5708" p="0" yw="0" scale="${scale}"
+        lower="-6.2832" upper="6.2832" velocity="3.927"/>
+    <xacro:mini_link name="${prefix}link_5" scale="${scale}" mass="3.545"
+        cx="-3e-06" cy="-0.038009" cz="0.043841"
+        ixx="0.023526" ixy="9.9368e-06" ixz="7.6673e-06" iyy="0.018415" iyz="-0.0059939" izz="0.014249">
+      <visuals>
+        <xacro:mini_visual file="E0509_5_1.dae" scale="${scale}"/>
+        <xacro:mini_visual file="E0509_5_2.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- joint_6 / link_6 -->
+    <xacro:mini_joint name="${prefix}joint_6" parent="${prefix}link_5" child="${prefix}link_6"
+        x="0" y="-0.1725" z="0" r="1.5708" p="0" yw="0" scale="${scale}"
+        lower="-6.2832" upper="6.2832" velocity="3.927"/>
+    <xacro:mini_link name="${prefix}link_6" scale="${scale}" mass="0.721"
+        cx="5.4e-05" cy="-0.000114" cz="-0.032091"
+        ixx="0.0048272" ixy="5.6302e-06" ixz="5.5274e-06" iyy="0.0046772" iyz="3.9598e-06" izz="0.0079424">
+      <visuals>
+        <xacro:mini_visual file="E0509_6_1.dae" scale="${scale}"/>
+      </visuals>
+    </xacro:mini_link>
+
+    <!-- 관절 제어 (gz_ros2_control, position 명령) -->
+    <ros2_control name="${prefix}e0509_mini_system" type="system">
+      <hardware>
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </hardware>
+      <xacro:mini_ros2_joint name="${prefix}joint_1"/>
+      <xacro:mini_ros2_joint name="${prefix}joint_2"/>
+      <xacro:mini_ros2_joint name="${prefix}joint_3"/>
+      <xacro:mini_ros2_joint name="${prefix}joint_4"/>
+      <xacro:mini_ros2_joint name="${prefix}joint_5"/>
+      <xacro:mini_ros2_joint name="${prefix}joint_6"/>
+    </ros2_control>
+
+    <gazebo>
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(find pinky_gz_sim)/config/arm_controllers.yaml</parameters>
+      </plugin>
+    </gazebo>
+
+  </xacro:macro>
+</robot>

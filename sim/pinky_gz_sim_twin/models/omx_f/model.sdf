@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="omx_f">
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <link name="link0">
+      <pose>0.000000 0.000000 0.000000 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>-0.014413 -0.003150 0.019277 0 0 0</pose>
+        <mass>2.238905100e-01</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link0_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_01_base.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link1">
+      <pose>-0.011250 0.000000 0.034000 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>-0.000006 0.000605 0.047419 0 0 0</pose>
+        <mass>6.598704100e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link1_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_02_base_tilt_Revised.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link2">
+      <pose>-0.011250 0.000000 0.097500 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.018090 0.000298 0.099005 0 0 0</pose>
+        <mass>8.722147100e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link2_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_03_middle_verticle.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link3">
+      <pose>0.030250 0.000000 0.210650 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.087399 0.000413 -0.003583 0 0 0</pose>
+        <mass>8.375912900e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link3_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_04_middle_horizontal.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link4">
+      <pose>0.192250 0.000000 0.210650 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.023235 0.000068 0.005976 0 0 0</pose>
+        <mass>2.997506300e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link4_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_05_tip.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link5">
+      <pose>0.220950 0.000000 0.210650 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.028072 0.000024 0.013529 0 0 0</pose>
+        <mass>4.381088700e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link5_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_06_pan_Revised.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link6">
+      <pose>0.250450 0.007500 0.210650 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.016165 0.001273 0.000273 0 0 0</pose>
+        <mass>1.209067700e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link6_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_07_gripper_motorized.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="link7">
+      <pose>0.250450 -0.010800 0.210650 0 0 0</pose>
+      <gravity>false</gravity>
+      <inertial>
+        <pose>0.016165 0.001273 0.000273 0 0 0</pose>
+        <mass>1.209067700e-02</mass>
+        <inertia><ixx>0.005</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.005</iyy><iyz>0</iyz><izz>0.005</izz></inertia>
+      </inertial>
+      <visual name="link7_visual">
+        <geometry><mesh><uri>model://omx_f/meshes/follower_08_gripper_gear.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="world_fixed" type="fixed"><parent>world</parent><child>link0</child></joint>
+    <joint name="joint1" type="revolute">
+      <parent>link0</parent><child>link1</child>
+      <axis><xyz>0 0 1</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="joint2" type="revolute">
+      <parent>link1</parent><child>link2</child>
+      <axis><xyz>0 1 0</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="joint3" type="revolute">
+      <parent>link2</parent><child>link3</child>
+      <axis><xyz>0 1 0</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="joint4" type="revolute">
+      <parent>link3</parent><child>link4</child>
+      <axis><xyz>0 1 0</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="joint5" type="revolute">
+      <parent>link4</parent><child>link5</child>
+      <axis><xyz>1 0 0</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="gripper_joint_1" type="revolute">
+      <parent>link5</parent><child>link6</child>
+      <axis><xyz>0 0 1</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <joint name="gripper_joint_2" type="revolute">
+      <parent>link5</parent><child>link7</child>
+      <axis><xyz>0 0 1</xyz><limit><lower>-6.283185307179586</lower><upper>6.283185307179586</upper></limit><dynamics><damping>0.1</damping></dynamics></axis>
+    </joint>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>joint1</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>joint2</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>joint3</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>joint4</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>joint5</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>gripper_joint_1</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+      <joint_name>gripper_joint_2</joint_name>
+      <p_gain>5</p_gain><i_gain>0</i_gain><d_gain>1.0</d_gain>
+      <cmd_max>3</cmd_max><cmd_min>-3</cmd_min>
+    </plugin>
+  </model>
+</sdf>

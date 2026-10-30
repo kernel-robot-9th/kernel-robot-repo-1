@@ -1,0 +1,18 @@
+/**:
+  controller_manager:
+    ros__parameters:
+      update_rate: 50  # Hz
+
+      arm_position_controller:
+        type: forward_command_controller/ForwardCommandController
+
+  arm_position_controller:
+    ros__parameters:
+      joints:
+        - arm_joint_1
+        - arm_joint_2
+        - arm_joint_3
+        - arm_joint_4
+        - arm_joint_5
+        - arm_joint_6
+      interface_name: position

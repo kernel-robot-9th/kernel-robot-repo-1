@@ -1,0 +1,73 @@
+<?xml version='1.0' ?>
+<!--
+  디지털 트윈 한 번에 실행 (이 파일 하나면 터미널 1개):
+    ros2 launch pinky_gz_sim digital_twin.launch.xml
+
+  포함되는 것
+    - launch_sim_arm.launch.xml : Gazebo + Pinky + Pinky 위 축소 e0509
+    - omx_bridge.launch.xml     : 가상 OMX 관절 제어 연결 (ROS <-> Gazebo)
+    - omx_sim_cmd.py            : /omx_f_N/target_joint_states -> 가상 OMX 관절
+    - omx_udp_bridge.py         : 실제 OMX(LeRobot)가 UDP 로 보낸 값 -> target_joint_states
+    - mirror_dsr_arm.py         : 실제 e0509 /dsr01/joint_states -> Pinky 위 축소 팔
+
+  옵션 (예: ros2 launch pinky_gz_sim digital_twin.launch.xml mirror_dsr:=false)
+    mirror_dsr     실제 e0509 미러링 사용 (기본 true, 실제 e0509 가 없어도 대기만 함)
+    omx_link       실제 OMX 값 수신 사용 (기본 true)
+    omx_udp_port   수신 포트 (기본 5005)
+    omx_udp_bind   수신 주소. 실제 OMX 가 다른 PC 에 있으면 0.0.0.0 (기본 127.0.0.1)
+    pinky_link     실제 Pinky(/amcl_pose) 위치를 가상 Pinky 에 반영 (기본 true)
+    real_domain    실제 로봇 ROS_DOMAIN_ID (기본 0)
+    sim_domain     시뮬 쪽 ROS_DOMAIN_ID (기본 10, 실제와 토픽이 섞이지 않게 분리)
+    calibrate_on_first  첫 수신 위치를 가상 핑키 시작점(anchor)에 맞춰 자동 보정 (기본 false: mapping_2 맵 기준 고정 보정값 사용)
+    pinky_use_odom  /real/odom 으로 부드럽게 보간 (기본 true, false 면 amcl 만 사용)
+    pinky_amcl_correct  true 면 시작 후에도 AMCL 값으로 위치를 계속 보정 (기본 false: 시작 때 한 번만 맞추고 이후엔 odom 만 사용 → 튐 없음)
+    pinky_z         가상 핑키를 놓는 높이(m). 공중에서 떨어지듯 보이면 낮추고, 바닥에 박히면 올린다 (기본 0.002, base_footprint 가 바닥 접점)
+    pinky_debug     연동 노드가 계산 값을 로그로 출력 (기본 false)
+    offset_x/offset_y/offset_yaw  보정값을 알 때 직접 지정 (calibrate_on_first:=false 와 함께)
+-->
+<launch>
+    <arg name="mirror_dsr" default="true"/>
+    <arg name="omx_link" default="true"/>
+    <arg name="omx_udp_port" default="5005"/>
+    <arg name="omx_udp_bind" default="127.0.0.1"/>
+    <arg name="pinky_link" default="true"/>
+    <arg name="real_domain" default="0"/>
+    <arg name="sim_domain" default="10"/>
+    <arg name="calibrate_on_first" default="false"/>
+    <arg name="offset_x" default="1.0931"/>
+    <arg name="offset_y" default="0.9357"/>
+    <arg name="offset_yaw" default="3.0107"/>
+    <arg name="pinky_use_odom" default="true"/>
+    <arg name="pinky_debug" default="false"/>
+    <arg name="pinky_z" default="0.002"/>
+    <arg name="pinky_amcl_correct" default="false"/>
+
+    <!-- 시뮬의 모든 ROS 노드는 별도 도메인에서 동작 (실제 Pinky 토픽과 충돌 방지) -->
+    <set_env name="ROS_DOMAIN_ID" value="$(var sim_domain)"/>
+
+    <include file="$(find-pkg-share pinky_gz_sim)/launch/launch_sim_arm.launch.xml"/>
+    <include file="$(find-pkg-share pinky_gz_sim)/launch/omx_bridge.launch.xml"/>
+
+    <executable cmd="/usr/bin/python3 $(find-pkg-share pinky_gz_sim)/scripts/omx_sim_cmd.py" output="screen"/>
+
+    <executable if="$(var omx_link)"
+                cmd="/usr/bin/python3 $(find-pkg-share pinky_gz_sim)/scripts/omx_udp_bridge.py --ros-args -p port:=$(var omx_udp_port) -p bind_host:=$(var omx_udp_bind)"
+                output="screen"/>
+
+    <executable if="$(var mirror_dsr)"
+                cmd="/usr/bin/python3 $(find-pkg-share pinky_gz_sim)/scripts/mirror_dsr_arm.py"
+                output="screen"/>
+
+    <!-- 실제(도메인 real_domain) -> 시뮬(도메인 sim_domain) 로 필요한 토픽만 전달 -->
+    <executable if="$(var pinky_link)"
+                cmd="ros2 run domain_bridge domain_bridge $(find-pkg-share pinky_gz_sim)/params/pinky_link_bridge.yaml --from $(var real_domain) --to $(var sim_domain)"
+                output="screen"/>
+
+    <!-- 가상 Pinky 위치 설정 서비스 (ROS <-> Gazebo) -->
+    <node if="$(var pinky_link)" pkg="ros_gz_bridge" exec="parameter_bridge" name="set_pose_bridge" output="screen"
+          args="/world/pinky_factory/set_pose@ros_gz_interfaces/srv/SetEntityPose"/>
+
+    <executable if="$(var pinky_link)"
+                cmd="/usr/bin/python3 $(find-pkg-share pinky_gz_sim)/scripts/mirror_pinky_pose.py --ros-args -p calibrate_on_first:=$(var calibrate_on_first) -p offset_x:=$(var offset_x) -p offset_y:=$(var offset_y) -p offset_yaw:=$(var offset_yaw) -p use_odom:=$(var pinky_use_odom) -p debug:=$(var pinky_debug) -p z:=$(var pinky_z) -p amcl_correct:=$(var pinky_amcl_correct)"
+                output="screen"/>
+</launch>

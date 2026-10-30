@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!--
+  pinky_with_arm : Pinky + 축소 e0509 (Gazebo 표시용)
+  원본 pinky_description 은 건드리지 않고, 그 매크로(insert_robot)를 그대로 불러 쓴 뒤
+  라이다 위에 축소 팔을 fixed joint 로 붙인다.
+-->
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="pinky">
+    <xacro:include filename="$(find pinky_description)/urdf/pinky.urdf.xacro"/>
+    <xacro:include filename="$(find pinky_gz_sim)/urdf/e0509_mini.xacro"/>
+
+    <!-- Pinky 쪽 인자 (robot.urdf.xacro 와 동일) -->
+    <xacro:arg name="namespace" default=""/>
+    <xacro:arg name="is_sim" default="true"/>
+    <xacro:arg name="cam_tilt_deg" default="0"/>
+    <xacro:arg name="screen_tilt_deg" default="-25"/>
+
+    <!-- 팔 쪽 인자 -->
+    <xacro:arg name="arm_scale" default="0.2"/>
+    <!-- base_link 기준. 라이다(rplidar_mount z=0.067, 높이 약 0.042) 바로 위 -->
+    <xacro:arg name="arm_mount_xyz" default="-0.017 0 0.109"/>
+    <xacro:arg name="arm_mount_rpy" default="0 0 0"/>
+
+    <xacro:insert_robot namespace="$(arg namespace)"
+                        is_sim="$(arg is_sim)"
+                        cam_tilt_deg="$(arg cam_tilt_deg)"
+                        screen_tilt_deg="$(arg screen_tilt_deg)"/>
+
+    <xacro:e0509_mini parent="base_link"
+                      xyz="$(arg arm_mount_xyz)"
+                      rpy="$(arg arm_mount_rpy)"
+                      scale="$(arg arm_scale)"
+                      prefix="arm_"/>
+</robot>
