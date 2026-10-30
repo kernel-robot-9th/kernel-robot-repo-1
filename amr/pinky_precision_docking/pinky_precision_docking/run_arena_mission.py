@@ -648,7 +648,7 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
 
             # Step 1: Navigate to Pre-docking Waypoint
             print(f"\n>>> [Stage {idx}-1] Navigating to Pre-docking Waypoint '{pre_dock_key}'...")
-            if idx == 1:
+            if idx == 1 and pre_dock_key.startswith('shelf1'):
                 # 44cm 협소 통로를 1자로 관통하기 위한 3점 연속 경로 (Home -> Shelf 1)
                 # Via 1, 2 남쪽 미세조정 반영 (각각 남쪽 -5cm 이동)
                 corridor_path = [
@@ -669,6 +669,8 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
                 if not ctrl.navigate_through(f"Packaging via Corridor ({pre_dock_key})", pack_corridor_path, timeout_sec=nav_timeout):
                     raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
             else:
+                # Shelf 1 -> Shelf 2 주행 등: 중간 경유점 없이 바로 Pre-docking 단일 목표 주행
+                print(f"   [Direct Nav2] '{pre_dock_key}' 경유점 없이 직접 이동 ({pre_dock_pose[0]:.3f}, {pre_dock_pose[1]:.3f})", flush=True)
                 if not ctrl.navigate_to(f"{pre_dock_key} Pre-docking", *pre_dock_pose, timeout_sec=nav_timeout,
                                         arrival_tol=ARRIVAL_TOLERANCE.get(pre_dock_key, 0.0)):
                     raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
