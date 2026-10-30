@@ -572,10 +572,12 @@ class ArenaMissionController:
             def _read_stdin():
                 nonlocal user_input_received, user_input_val
                 try:
+                    if not sys.stdin.isatty():
+                        return
                     user_input_val = sys.stdin.readline()
                     user_input_received = True
                 except Exception:
-                    user_input_received = True
+                    pass
 
             input_thread = threading.Thread(target=_read_stdin, daemon=True)
             input_thread.start()

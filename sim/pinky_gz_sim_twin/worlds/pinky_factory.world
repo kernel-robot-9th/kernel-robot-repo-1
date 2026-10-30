@@ -1,0 +1,375 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="pinky_factory">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+        name="gz::sim::systems::Imu">
+    </plugin>
+    
+    <!--light-->
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 2 0 0 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>1</constant>
+        <linear>0</linear>
+        <quadratic>0</quadratic>
+      </attenuation>
+      <direction>0 0 -1</direction>
+    </light>
+    
+    <model name="logo">
+      <pose>0 0 0 0 0 0</pose>
+      <static>true</static>
+      <link name="logo_link">
+        <visual name="logo_visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>2.25 1.5</size>
+            </plane>
+          </geometry>
+          <material>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>0.6 0.6 0.6 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map><albedo_map>file://__TWIN_FLOOR__</albedo_map></albedo_map>
+              </metal>
+            </pbr>
+          </material>
+        </visual>
+        <collision name="logo_collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>2.25 1.5</size>
+            </plane>
+          </geometry>
+          <surface>
+            <contact>
+              <collide_without_contact>true</collide_without_contact>
+            </contact>
+          </surface>
+        </collision>
+      </link>
+    </model>
+Component,12,10918813941671183356,Pose3d,yaw,Pose
+  <include>
+    <uri>model://shelf_a</uri>
+    <name>shelf_1</name>
+    <pose>0.8716 0.6766 0 0 0 0</pose>
+  </include>
+
+  <include>
+    <uri>model://shelf_a</uri>
+    <name>shelf_2</name>
+    <pose>0.5266 0.6780 0 0 0 0</pose>
+  </include>
+
+  <include>
+    <uri>model://shelf_b</uri>
+    <name>shelf_3</name>
+    <pose>-0.1561 -0.5148 0 0 0 1.5708</pose>
+  </include>
+
+  <!-- OMX-F 2대 (표시용, 충돌 없음). yaw 1.5708 = 왼쪽(반시계) 90도 -->
+  <include>
+    <uri>model://omx_f</uri>
+    <name>omx_f_1</name>
+    <pose>-0.8040 -0.6316 0 0 0 1.5708</pose>
+  </include>
+  <include>
+    <uri>model://omx_f</uri>
+    <name>omx_f_2</name>
+    <pose>-0.5053 -0.6316 0 0 0 1.5708</pose>
+  </include>
+
+  <!-- <model name="robot_arm">
+    <static>true</static>
+    <pose>1.7 0 0.11 0 0 0</pose>
+    <link name="robot_arm_link">
+      <visual name="robot_arm_visual">
+        <geometry>
+          <mesh>
+            <uri>model://robot/jetcobot.dae</uri>
+            <scale>1.0 1.0 1.0</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="robot_arm_collision">
+        <geometry>
+          <mesh>
+            <uri>model://robot/jetcobot.dae</uri>
+            <scale>1.0 1.0 1.0</scale>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model> -->
+
+  <model name="wall_front">
+    <static>true</static>
+    <pose>0 0.75 0.11 0 0 0</pose>
+    <link name="wall_link_front">
+      <visual name="wall_visual_front">
+        <geometry>
+          <box>
+            <size>2.25 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_front">
+        <geometry>
+          <box>
+            <size>2.25 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_back">
+    <static>true</static>
+    <pose>0 -0.75 0.11 0 0 3.14</pose>
+    <link name="wall_link_back">
+      <visual name="wall_visual_back">
+        <geometry>
+          <box>
+            <size>2.25 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_back">
+        <geometry>
+          <box>
+            <size>2.25 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_left">
+    <static>true</static>
+    <pose>-1.125 0 0.11 0 0 1.57</pose>
+    <link name="wall_link_left">
+      <visual name="wall_visual_left">
+        <geometry>
+          <box>
+            <size>1.5 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_left">
+        <geometry>
+          <box>
+            <size>1.5 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_right">
+    <static>true</static>
+    <pose>1.125 0 0.11 0 0 -1.57</pose>
+    <link name="wall_link_right">
+      <visual name="wall_visual_right">
+        <geometry>
+          <box>
+            <size>1.5 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_right">
+        <geometry>
+          <box>
+            <size>1.5 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_57">
+    <static>true</static>
+    <pose>0.2919 0.4589 0.11 0 0 -1.57</pose>
+    <link name="wall_link_right">
+      <visual name="wall_visual_right">
+        <geometry>
+          <box>
+            <size>0.57 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_right">
+        <geometry>
+          <box>
+            <size>0.57 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_45">
+    <static>true</static>
+    <pose>-0.2228 -0.5188 0.11 0 0 -1.57</pose>
+    <link name="wall_link_right">
+      <visual name="wall_visual_right">
+        <geometry>
+          <box>
+            <size>0.45 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_right">
+        <geometry>
+          <box>
+            <size>0.45 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_62">
+    <static>true</static>
+    <pose>0.0820 -0.2922 0.11 0 0 3.14</pose>
+    <link name="wall_link_back">
+      <visual name="wall_visual_back">
+        <geometry>
+          <box>
+            <size>0.62 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_back">
+        <geometry>
+          <box>
+            <size>0.62 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="wall_65">
+    <static>true</static>
+    <pose>-0.8004 0.1332 0.11 0 0 3.14</pose>
+    <link name="wall_link_back">
+      <visual name="wall_visual_back">
+        <geometry>
+          <box>
+            <size>0.65 0.01 0.44</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <collision name="wall_collision_back">
+        <geometry>
+          <box>
+            <size>0.65 0.01 0.44</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+  <model name="camera">
+    <static>true</static>
+      <pose>0 0 1.6 0 1.57 1.57</pose>
+      <link name="link">
+        <pose>0.05 0.05 0.05 0 0 0</pose>
+        <inertial>
+          <mass>0.1</mass>
+          <inertia>
+            <ixx>0.000166667</ixx>
+            <iyy>0.000166667</iyy>
+            <izz>0.000166667</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.1 0.1 0.1</size>
+            </box>
+          </geometry>
+        </collision>
+        <sensor name="camera" type="camera">
+          <camera>
+            <horizontal_fov>2.094</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>100</far>
+            </clip>
+          </camera>
+          <always_on>1</always_on>
+          <update_rate>30</update_rate>
+          <visualize>true</visualize>
+          <topic>camera</topic>
+        </sensor>
+      </link>
+    </model>
+  </world>
+</sdf>

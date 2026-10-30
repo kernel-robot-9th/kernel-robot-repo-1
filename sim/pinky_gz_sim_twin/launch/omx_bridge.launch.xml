@@ -1,0 +1,9 @@
+<?xml version='1.0' ?>
+<!--
+  가상 OMX 2대(omx_f_1, omx_f_2) 관절 제어용 브릿지. 시뮬(launch_sim*.launch.xml)을 띄운 뒤 다른 터미널에서 실행.
+  ROS /omx_f_N/<joint>/cmd_pos (Float64)  ->  Gazebo /model/omx_f_N/joint/<joint>/cmd_pos
+-->
+<launch>
+    <node pkg="ros_gz_bridge" exec="parameter_bridge" name="omx_bridge" output="screen"
+          args="--ros-args -p config_file:=$(find-pkg-share pinky_gz_sim)/params/omx_bridge.yaml"/>
+</launch>

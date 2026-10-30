@@ -33,14 +33,14 @@ echo "주문 $N: $ORDER  →  선반1(마커 $SHELF1) $([ $NEED1 = 1 ] && echo �
 pkill -f "integration/tools/mission_bridge.py" ; sleep 1
 python3 "$REPO/integration/tools/mission_bridge.py" --order "$ORDER" > "$L/order_${N}_bridge.log" 2>&1 &
 BRIDGE=$!
-trap 'kill $BRIDGE 2>/dev/null' EXIT
+trap 'kill $BRIDGE 2>/dev/null; pkill -P $$ 2>/dev/null' EXIT
 sleep 2
 
 T0=$(date +%s)
 if [ "${HOME_FIT:-0}" = 1 ]; then python3 "$REPO/integration/tools/home_pose.py" || exit 1; else python3 "$REPO/integration/tools/set_home_pose.py"; fi
 
 shelf() {   # $1 = 마커 번호. 터미널 입력은 막아 둠 (빈 줄로 두산보다 먼저 떠나지 않게)
-    ros2 run pinky_precision_docking run_arena_mission --step "$1" --no-home < <(sleep infinity) 2>&1 | tee "$L/order_${N}_m$1.log"
+    ros2 run pinky_precision_docking run_arena_mission --step "$1" --no-home </dev/null 2>&1 | tee "$L/order_${N}_m$1.log"
     grep -q "SUCCESS\] ENTIRE" "$L/order_${N}_m$1.log" || { echo "중단: 마커 $1 구역 실패 (로그 $L/order_${N}_m$1.log)"; exit 1; }
 }
 [ $NEED1 = 1 ] && shelf "$SHELF1"
