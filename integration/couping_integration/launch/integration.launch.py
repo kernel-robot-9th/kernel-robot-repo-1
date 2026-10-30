@@ -8,6 +8,8 @@
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
     # 로봇·카메라 없이 주문 신호 흐름만 시험
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
+    # Gazebo 디지털 트윈 화면을 관리자 화면에 (트윈은 다른 터미널: ros2 launch couping_integration twin.launch.py real_domain:=<ROS_DOMAIN_ID>)
+    ros2 launch couping_integration integration.launch.py ... sim_view:=true
 핑키 bringup 은 핑키에서, Nav2(pinky_navigation bringup_arena) 는 따로 실행합니다.
 정밀 도킹 노드(pinky_precision_docking)는 pinky:=true docking:=true(기본) 일 때 여기서 함께 띄웁니다
 (핑키 카메라 /camera/image_raw/compressed 와 /scan 을 Wi-Fi 로 받음).
@@ -58,6 +60,9 @@ def generate_launch_description():
         DeclareLaunchArgument('pinky', default_value='true', description='핑키 주행 단계 포함 (false 면 건너뜀)'),
         DeclareLaunchArgument('docking', default_value='true', description='핑키 ArUco 정밀 도킹 (false 면 Nav2 좌표까지만)'),
         DeclareLaunchArgument('fake', default_value='false', description='두산 picker · OMX 를 로봇·카메라 없이 흉내 (신호 흐름 시험)'),
+        DeclareLaunchArgument('sim_view', default_value='false',
+                              description='Gazebo 디지털 트윈 카메라를 관리자 화면(/sim.mjpg)에 보냄'),
+        DeclareLaunchArgument('sim_domain', default_value='10', description='디지털 트윈 ROS_DOMAIN_ID'),
         DeclareLaunchArgument('manual_transfer', default_value='false',
                               description='핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면에서 확인 (pinky:=false 와 함께)'),
         DeclareLaunchArgument('mode', default_value='real', description='real 또는 virtual(에뮬레이터, Docker 필요)'),
@@ -90,6 +95,9 @@ def generate_launch_description():
         Node(package='couping_integration', executable='omx_packer',
              parameters=[config, {'signal_only': signal_only, 'fake': fake}],
              output='screen', condition=IfCondition(omx)),
+        Node(package='couping_integration', executable='sim_camera', output='screen',
+             parameters=[{'sim_domain': ParameterValue(LaunchConfiguration('sim_domain'), value_type=int)}],
+             condition=IfCondition(LaunchConfiguration('sim_view'))),
         Node(package='couping_integration', executable='web_ui', output='screen',
              parameters=[{'port': ParameterValue(LaunchConfiguration('web_port'), value_type=int)}],
              condition=IfCondition(LaunchConfiguration('web'))),

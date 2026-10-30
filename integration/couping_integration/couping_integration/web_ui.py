@@ -7,6 +7,7 @@
 관리자 화면: 들어온 주문, 품목별 상태, 두산 진행, 실시간 카메라, 로봇 상태, 신호 로그, 정지·재개
 브라우저와는 HTTP 로만 주고받는다: 상태는 /events (Server-Sent Events) 로 밀어주고,
 카메라는 /camera.mjpg (비전 노드의 /couping/vision/image/compressed) 로 보낸다.
+Gazebo 디지털 트윈 화면은 /sim.mjpg (sim_camera 노드의 /couping/sim/image/compressed).
 같은 와이파이의 휴대폰에서도 고객 화면을 열 수 있다 (실습실 내부망 전용, 인증 없음).
 """
 import json
@@ -48,14 +49,15 @@ class WebUI(Node):
         self.orders = {}          # id → {id, items, state, stage, detail, time, lines:[{item, state}], paused}
         self.order_seq = 0
         self.current = None       # 피킹 중인 주문 id
+        self.pick_lines = {}      # 이번 두산 작업의 'i/N' 번호 → 주문 품목 줄 번호
         self.state = 'IDLE'
         self.paused = False
         self.picker = {'text': '', 'busy': False}
         self.logs = []
         self.stock = {}
         self.detected = 0
-        self.frame = None
-        self.frame_seq = 0
+        self.frames = {'vision': None, 'sim': None}  # 진열대 카메라 · Gazebo 디지털 트윈 (JPEG)
+        self.frame_seqs = {'vision': 0, 'sim': 0}
         self.frame_cv = threading.Condition()
         self.camera_clients = 0
         self.camera_on = False
@@ -72,7 +74,10 @@ class WebUI(Node):
         self.create_subscription(String, '/couping/packer/status', self.on_packer, 10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(String, '/couping/vision/detections', self.on_detections, latched)
-        self.create_subscription(CompressedImage, '/couping/vision/image/compressed', self.on_image, 1)
+        self.create_subscription(CompressedImage, '/couping/vision/image/compressed',
+                                 lambda msg: self.on_image('vision', msg), 1)
+        self.create_subscription(CompressedImage, '/couping/sim/image/compressed',
+                                 lambda msg: self.on_image('sim', msg), 1)
         self.triggers = {n: self.create_client(Trigger, f'/couping/{n}') for n in ('stop', 'resume', 'confirm')}
         self.vision_param = self.create_client(SetParameters, '/shelf_vision/set_parameters')
 
@@ -137,23 +142,39 @@ class WebUI(Node):
         with self.lock:
             if data == 'running':
                 self.picker = {'text': '작업 시작', 'busy': True}
+                self.pick_lines = {}  # 구역마다 두산 작업이 새로 시작되고 번호도 1부터 다시 셈
             elif data.startswith('progress:'):
                 text = data[len('progress:'):]
                 self.picker = {'text': text, 'busy': True}
                 m = PROGRESS_RE.match(text)
                 o = self.orders.get(self.current)
-                if m and o:
-                    i = int(m.group(1)) - 1
-                    if i < len(o['lines']):
-                        word = m.group(4)
-                        o['lines'][i]['state'] = ('다시 담는 중' if '다시 시도' in word else '담는 중' if '집는' in word
-                                                  else '담지 못함' if ('실패' in word or '건너뜀' in word)
-                                                  else '상자에 넣음' if ('놓음' in word or '완료' in word) else word)
+                i = self.line_of(o, int(m.group(1)), m.group(3)) if m and o else None
+                if i is not None:
+                    word = m.group(4)
+                    o['lines'][i]['state'] = ('다시 담는 중' if '다시 시도' in word else '담는 중' if '집는' in word
+                                              else '담지 못함' if ('실패' in word or '건너뜀' in word)
+                                              else '상자에 넣음' if ('놓음' in word or '완료' in word) else word)
                 self.log('두산 ' + text, 'info')
             else:
                 self.picker = {'text': '완료' if data == 'done' else data, 'busy': False}
                 self.log('두산 ' + data, 'ok' if data == 'done' else 'warn')
             self.bump()
+
+    def line_of(self, order, num, item):
+        """두산 진행 'num/N 이름(item)' 이 주문의 몇 번째 품목 줄인지.
+
+        두산은 구역마다 그 구역 품목만 1번부터 세고, 주문 줄은 고객 화면의 상품 순서라서
+        번호만으로 찾으면 다른 품목에 표시된다 (예: 주문 [당근, 세제] 에서 선반1 세제가 '1/1').
+        같은 품목이 여러 개면 아직 담지 않은 줄부터 차례로 짝짓는다.
+        """
+        if num in self.pick_lines:
+            return self.pick_lines[num]
+        taken = set(self.pick_lines.values())
+        for i, ln in enumerate(order['lines']):
+            if ln['item'] == item and i not in taken and ln['state'] == '대기':
+                self.pick_lines[num] = i
+                return i
+        return None
 
     def on_packer(self, msg):
         with self.lock:
@@ -180,10 +201,10 @@ class WebUI(Node):
             self.robots['vision'] = {'ok': True, 'text': f'인식 {len(items)}개'}
             self.bump()
 
-    def on_image(self, msg):
+    def on_image(self, source, msg):
         with self.frame_cv:
-            self.frame = bytes(msg.data)
-            self.frame_seq += 1
+            self.frames[source] = bytes(msg.data)
+            self.frame_seqs[source] += 1
             self.frame_cv.notify_all()
 
     # ---------- 주기 확인 ----------
@@ -313,7 +334,9 @@ def make_handler(node, web_dir):
             if path == '/events':
                 return self.events()
             if path == '/camera.mjpg':
-                return self.camera()
+                return self.camera('vision')
+            if path == '/sim.mjpg':
+                return self.camera('sim')
             self.send_json(404, {'error': 'not found'})
 
         def do_POST(self):
@@ -360,29 +383,33 @@ def make_handler(node, web_dir):
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
-        def camera(self):
+        def camera(self, source):
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
-            node.camera_clients += 1
+            vision = source == 'vision'  # 진열대 카메라만 비전 노드 미리보기를 켜고 끔
+            if vision:
+                node.camera_clients += 1
             seen = -1
             try:
                 while rclpy.ok():
-                    node.camera_last = time.monotonic()
+                    if vision:
+                        node.camera_last = time.monotonic()
                     with node.frame_cv:
-                        if node.frame_seq == seen:
+                        if node.frame_seqs[source] == seen:
                             node.frame_cv.wait(timeout=2.0)
-                        if node.frame_seq == seen or node.frame is None:
+                        if node.frame_seqs[source] == seen or node.frames[source] is None:
                             continue
-                        seen, frame = node.frame_seq, node.frame
+                        seen, frame = node.frame_seqs[source], node.frames[source]
                     self.wfile.write(b'--frame\r\nContent-Type: image/jpeg\r\nContent-Length: '
                                      + str(len(frame)).encode() + b'\r\n\r\n' + frame + b'\r\n')
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
             finally:
-                node.camera_clients -= 1
+                if vision:
+                    node.camera_clients -= 1
 
     return Handler
 
