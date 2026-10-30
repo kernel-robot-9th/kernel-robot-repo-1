@@ -40,6 +40,7 @@ def main():
     node = rclpy.create_node('mission_bridge')
     log = node.get_logger()
     picker_pub = node.create_publisher(String, '/couping/picker/cmd', 10)
+    packer_pub = node.create_publisher(String, '/couping/packer/cmd', 10)
     complete_pub = node.create_publisher(String, '/pinky/station_task/complete', 10)
     state = {'station': None}
 
@@ -65,16 +66,24 @@ def main():
         elif station.startswith('shelf'):
             complete('done (이 구역 주문 품목 없음)')
         else:
-            complete('done (OMX 없음: 포장 건너뜀)')
+            log.info("→ OMX 포장 시작 (packer cmd: start)")
+            packer_pub.publish(String(data='start'))
 
     def on_picker(msg):
-        if state['station'] and (msg.data == 'done' or msg.data.startswith('fail')):
+        if state['station'] and state['station'].startswith('shelf') and (msg.data == 'done' or msg.data.startswith('fail')):
             complete(msg.data)
         elif msg.data.startswith('progress:'):
             log.info(msg.data)
 
+    def on_packer(msg):
+        if state['station'] == 'packaging' and (msg.data == 'done' or msg.data.startswith('fail')):
+            complete(msg.data)
+        elif msg.data.startswith('progress:'):
+            log.info(f"OMX: {msg.data}")
+
     node.create_subscription(String, '/pinky/station_task/trigger', on_trigger, 10)
     node.create_subscription(String, '/couping/picker/status', on_picker, 10)
+    node.create_subscription(String, '/couping/packer/status', on_packer, 10)
     log.info('대기 중: ' + (f'두산 구역 도착하면 pick:{args.items}' if args.items else
                            ', '.join(f'{z}→{[it for it in order if it in ZONE_ITEMS[z]]}' for z in ZONE_ITEMS)))
     try:

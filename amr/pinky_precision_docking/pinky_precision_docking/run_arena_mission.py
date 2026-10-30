@@ -41,14 +41,14 @@ from pinky_precision_docking.sound_effects import (
 
 # Arena Waypoints [x(m), y(m), yaw(rad)]
 WAYPOINTS = {
-    'home': [0.2300, 0.0300, 0.0000],   # 10/28: (0.12, 0, 0) -> 모서리에서 10cm 앞 (적재판 회전 여유)
+    'home': [0.2300, -0.0200, 0.0000],  # 10/30: 남쪽 -5cm 조정 (이전 0.0300)
     'shelf1': [0.6000, 1.4700, 3.1416],  # Shelf 1 Area Representative Pre-docking (Views all 3 bays: Left=8, Center=9, Right=7)
     # 10/27 핑키 인수인계 predock_poses.json 실측값 (마커별 400mm 전방)
     'shelf1_m8': [0.6090, 1.2586, -3.0861],
     'shelf1_m9': [0.5598, 1.4057, 3.0349],
     'shelf1_m7': [0.5270, 1.6069, 3.0536],
     'shelf2': [1.0783, 1.5346, -1.5355], # Shelf 2 공용 Pre-docking (마커 4·2), 10/27 실측값 (이전 1.11, 1.50, -1.5708)
-    'packaging': [0.7710, 0.2436, 0.0467], # Packaging Area Pre-docking (Marker 5), 10/27 실측값 (이전 0.724, 0.243, 0.107)
+    'packaging': [0.8710, 0.2436, 0.0467], # Packaging Area Pre-docking (Marker 5), 10/30 동쪽 +10cm 반영 (이전 0.7710)
 }
 
 # 도착 판정 완화 (10/28 비활성: Nav2 자체 GoalChecker 및 RPP 헤딩 정렬 사용)
@@ -70,7 +70,7 @@ ALL_STATIONS = [
         'task_type': '부품 A Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
         'dock_dist': 0.03,
-        'undock_dist': 0.25,
+        'undock_dist': 0.50,
     },
     {
         'area': 'Shelf 1',
@@ -81,7 +81,7 @@ ALL_STATIONS = [
         'task_type': '부품 B Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',
         'dock_dist': 0.03,
-        'undock_dist': 0.25,
+        'undock_dist': 0.50,
     },
     {
         'area': 'Shelf 1',
@@ -92,7 +92,9 @@ ALL_STATIONS = [
         'task_type': '부품 C Pick & Place (피킹 및 핑키 적재)',
         'pre_docking': 'shelf1_m9',   # 10/28: 선반1 도킹은 항상 마커 9 대기 지점에서 시작
         'dock_dist': 0.03,
-        'undock_dist': 0.25,
+        'undock_dist': 0.55,
+        'undock_angular': -0.07,      # 후진하면서 살짝 왼쪽(마커 9 목적지 방향)으로 빠지도록 커브 조향
+        'undock_straight_first': 0.15, # 초기 15cm 직선 후진으로 베이 안전 탈출 후 회전
     },
     # Area 2: Shelf 2 (Coolers & Refrigeration - 2 Coolers: Left=4, Right=2)
     {
@@ -131,11 +133,11 @@ ALL_STATIONS = [
     },
 ]
 
-# Legacy Sample Stations (1 per area for quick test)
+# Legacy Sample Stations (1 per area for quick test: Shelf 1 ID 7, Shelf 2 ID 4, Packaging ID 5)
 SAMPLE_STATIONS = [
-    ALL_STATIONS[1],  # Shelf 1 Center (ID 9)
-    ALL_STATIONS[3],  # Shelf 2 Left (ID 4)
-    ALL_STATIONS[5],  # Packaging (ID 5)
+    ALL_STATIONS[2],  # Shelf 1 Right Bay (ID 7)
+    ALL_STATIONS[3],  # Shelf 2 Left Cooler (ID 4)
+    ALL_STATIONS[5],  # Packaging Station (ID 5)
 ]
 
 
@@ -285,6 +287,66 @@ class ArenaMissionController:
             print(f"[Nav2] 회전 결과: {self.nav.getResult()}")
         return True
 
+    def navigate_through(self, waypoint_name: str, poses_list: list, timeout_sec: float = 180.0) -> bool:
+        """
+        Nav2 goThroughPoses를 사용하여 중간 지점 정지/회전 없이 
+        연속적인 단일 궤적으로 통로를 관통 주행하는 메서드.
+        poses_list: [(x1, y1, yaw1), (x2, y2, yaw2), ..., (x_final, y_final, yaw_final)]
+        """
+        print(f"\n>>> [Nav2] Continuous Path to '{waypoint_name}' via {len(poses_list)-1} via-points (timeout: {timeout_sec:.0f}s)...")
+
+        goals = []
+        for (x, y, yaw) in poses_list:
+            goal = PoseStamped()
+            goal.header.frame_id = 'map'
+            goal.header.stamp = self.nav.get_clock().now().to_msg()
+            goal.pose.position.x = float(x)
+            goal.pose.position.y = float(y)
+            goal.pose.position.z = 0.0
+            goal.pose.orientation.z = math.sin(yaw / 2.0)
+            goal.pose.orientation.w = math.cos(yaw / 2.0)
+            goals.append(goal)
+
+        # Nav2 다중 경유점 무정차 궤적 주행 호출 (Tight Via-point radius 0.15m 적용)
+        bt_xml = '/home/omen/team/kernel-robot-repo-1/amr/pinky_navigation/params/navigate_through_poses_arena.xml'
+        self.nav.goThroughPoses(goals, behavior_tree=bt_xml)
+
+        start_clk = self.nav.get_clock().now()
+        start_wall_t = time.time()
+        last_log_wall_t = start_wall_t
+
+        while not self.nav.isTaskComplete():
+            feedback = self.nav.getFeedback()
+            now_wall_t = time.time()
+            now_clk = self.nav.get_clock().now()
+
+            if start_clk.nanoseconds > 0 and now_clk.nanoseconds >= start_clk.nanoseconds:
+                elapsed_sim = (now_clk - start_clk).nanoseconds / 1e9
+            else:
+                elapsed_sim = now_wall_t - start_wall_t
+            elapsed_wall = now_wall_t - start_wall_t
+
+            if now_wall_t - last_log_wall_t >= 3.0:
+                last_log_wall_t = now_wall_t
+                rem_str = f"{feedback.distance_remaining:.2f}m" if feedback else "measuring..."
+                print(f"  [Nav2 Progress] Continuous transit to '{waypoint_name}' | Rem: {rem_str} | Elapsed: {elapsed_sim:.1f}s")
+
+            time.sleep(0.1)
+
+            if elapsed_wall > timeout_sec:
+                print(f"[Nav2 Error] Continuous transit to '{waypoint_name}' timed out ({timeout_sec:.0f}s)!")
+                self.nav.cancelTask()
+                return False
+
+        res = self.nav.getResult()
+        elapsed_total = (self.nav.get_clock().now() - start_clk).nanoseconds / 1e9
+        if res == TaskResult.SUCCEEDED:
+            print(f"[Nav2] Successfully completed continuous transit to '{waypoint_name}' in {elapsed_total:.1f}s.")
+            return True
+        else:
+            print(f"[Nav2 Error] Continuous transit to '{waypoint_name}' failed with result: {res}")
+            return False
+
     def set_docking_target_distance(self, target_dist: float):
         """Set target_distance parameter on /precision_docking_node."""
         if not self.dock_param_cli.wait_for_service(timeout_sec=3.0):
@@ -349,12 +411,21 @@ class ArenaMissionController:
             play_docking_complete(blocking=False)
         return True
 
-    def undock_backup(self, distance_m: float = 0.20, speed: float = -0.04, timeout_sec: float = 15.0):
+    def undock_backup(
+        self,
+        distance_m: float = 0.20,
+        speed: float = -0.04,
+        angular_z: float = 0.0,
+        straight_first_m: float = 0.0,
+        timeout_sec: float = 15.0
+    ):
         """
-        Safely back up straight using Odometry closed-loop feedback.
+        Safely back up straight or curved using Odometry closed-loop feedback.
         Measures actual euclidean distance traveled to prevent overshooting caused by simulation latency/RTF.
+        Supports initial straight exit followed by curve steering (e.g. Marker 7 -> Marker 9 undock path).
         """
-        print(f"[Undock] Closed-loop backing up target: {distance_m*100:.1f}cm straight at {speed:.2f}m/s...")
+        mode_str = f"curved (w={angular_z:.2f}rad/s after {straight_first_m*100:.0f}cm straight)" if abs(angular_z) > 1e-4 else "straight"
+        print(f"[Undock] Closed-loop backing up target: {distance_m*100:.1f}cm {mode_str} at {speed:.2f}m/s...")
         if self.enable_sound:
             self._trigger_buzzer('reverse_start')
             start_reverse_melody()
@@ -412,6 +483,12 @@ class ArenaMissionController:
                 if elapsed_wall > timeout_sec:
                     print(f"[Undock Warning] Safety timeout reached ({timeout_sec:.1f}s). Traveled: {dist_traveled*100:.1f}cm.")
                     break
+
+                # Apply curve if past the initial straight distance
+                if dist_traveled >= straight_first_m:
+                    msg.angular.z = float(angular_z)
+                else:
+                    msg.angular.z = 0.0
 
                 self.cmd_vel_pub.publish(msg)
                 time.sleep(0.02)
@@ -571,9 +648,30 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
 
             # Step 1: Navigate to Pre-docking Waypoint
             print(f"\n>>> [Stage {idx}-1] Navigating to Pre-docking Waypoint '{pre_dock_key}'...")
-            if not ctrl.navigate_to(f"{pre_dock_key} Pre-docking", *pre_dock_pose, timeout_sec=nav_timeout,
-                                    arrival_tol=ARRIVAL_TOLERANCE.get(pre_dock_key, 0.0)):
-                raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
+            if idx == 1:
+                # 44cm 협소 통로를 1자로 관통하기 위한 3점 연속 경로 (Home -> Shelf 1)
+                # Via 1, 2 남쪽 미세조정 반영 (각각 남쪽 -5cm 이동)
+                corridor_path = [
+                    (0.7850, 0.9232, 1.2389),   # Via 1: 남쪽 5cm 미세조정 (Heading +71.0°)
+                    (0.8400, 1.1771, 1.2964),   # Via 2: 남쪽 5cm 미세조정 및 중앙 유도 (Heading +74.3°)
+                    (pre_dock_pose[0], pre_dock_pose[1], pre_dock_pose[2])  # 최종 Pre-docking
+                ]
+                if not ctrl.navigate_through(f"Shelf 1 via Corridor ({pre_dock_key})", corridor_path, timeout_sec=nav_timeout):
+                    raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
+            elif pre_dock_key == 'packaging':
+                # Shelf 2 -> Packaging 통로 연속 관통 경로 (Shelf 2 -> Packaging)
+                # 12회차 최적 파라미터 적용 (18.9초 쾌속 관통)
+                pack_corridor_path = [
+                    (0.7000, 1.3000, -1.5708),   # Via 3: 통로 북측 입구 직결 (-90°)
+                    (0.7000, 0.5000, -1.2217),   # Via 4: 통로 남측 탈출 스위핑 (-70°)
+                    (pre_dock_pose[0], pre_dock_pose[1], pre_dock_pose[2])  # 최종 Pre-docking
+                ]
+                if not ctrl.navigate_through(f"Packaging via Corridor ({pre_dock_key})", pack_corridor_path, timeout_sec=nav_timeout):
+                    raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
+            else:
+                if not ctrl.navigate_to(f"{pre_dock_key} Pre-docking", *pre_dock_pose, timeout_sec=nav_timeout,
+                                        arrival_tol=ARRIVAL_TOLERANCE.get(pre_dock_key, 0.0)):
+                    raise RuntimeError(f"Navigation to {pre_dock_key} pre-docking failed for {station['station_name']}")
             time.sleep(1.0)
 
             # Step 2: Precision Docking to ArUco Marker
@@ -595,8 +693,16 @@ def run_full_mission(stations: list = None, enable_sound: bool = True, piezo_pin
 
             # Step 4: Closed-loop Undock Backup
             undock_dist = station.get('undock_dist', 0.50)
+            undock_angular = station.get('undock_angular', 0.0)
+            undock_straight = station.get('undock_straight_first', 0.0)
             print(f"\n>>> [Stage {idx}-4] Undock Backing Up ({undock_dist*100:.1f}cm)...")
-            ctrl.undock_backup(distance_m=undock_dist, speed=-0.05, timeout_sec=30.0)
+            ctrl.undock_backup(
+                distance_m=undock_dist,
+                speed=-0.05,
+                angular_z=undock_angular,
+                straight_first_m=undock_straight,
+                timeout_sec=30.0
+            )
             time.sleep(0.5)
 
         # Final Stage: Return to Home Parking
@@ -642,6 +748,25 @@ def main():
     elif args.step == 'home':
         stations_to_run = []
         return_home = True
+    elif ',' in args.step:
+        stations_to_run = []
+        for item in [s.strip() for s in args.step.split(',') if s.strip()]:
+            if item.isdigit():
+                m_id = int(item)
+                matching = [s for s in ALL_STATIONS if s['marker_id'] == m_id]
+                if matching:
+                    stations_to_run.append(matching[0])
+                else:
+                    print(f"[Error] Unknown marker ID in step: {item}")
+                    sys.exit(1)
+            else:
+                matching = [s for s in ALL_STATIONS if item.lower() in s['station_id'].lower() or item.lower() in s['station_name'].lower()]
+                if matching:
+                    stations_to_run.append(matching[0])
+                else:
+                    print(f"[Error] Unknown station name in step: {item}")
+                    sys.exit(1)
+        return_home = not args.no_home
     elif args.step.isdigit():
         val = int(args.step)
         # Check if val is a 1-based station index

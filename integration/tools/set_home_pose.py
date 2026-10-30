@@ -9,7 +9,7 @@ import time
 import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
-X, Y, YAW = 0.23, 0.03, 0.0   # 10/28: 새 P (모서리에서 10cm 앞)
+X, Y, YAW = 0.23, -0.02, 0.0   # 10/30: 남쪽 -5cm 보정 (이전 0.03)
 
 
 def main():

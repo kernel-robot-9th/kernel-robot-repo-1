@@ -88,6 +88,9 @@ def main(args=None):
                 return
 
     def run_order(items):
+        for item in items:
+            if item in ('salad', 'paper_towel'):
+                raise pick_core.PickError(f"안전 위험으로 1단 품목({catalog.label(item)}) 피킹이 거부되었습니다.")
         p = {k: get(k) for k in PARAMS}
         if not fake:
             pick_core.check_slots(len(items))

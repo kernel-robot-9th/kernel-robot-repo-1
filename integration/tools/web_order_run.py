@@ -65,6 +65,10 @@ class WebOrderRun:
         if bad or not order['items']:
             self.publish(order, 'rejected', f"모르는 품목: {', '.join(bad)}" if bad else '품목 없음')
             return
+        unsafe = [k for k in order['items'] if k in ('salad', 'paper_towel')]
+        if unsafe:
+            self.publish(order, 'rejected', f"안전 제한: 1단 품목({', '.join(unsafe)})은 충돌 위험으로 피킹 불가")
+            return
         self.publish(order, 'queued', f'앞 주문 {self.orders.qsize() + (self.proc is not None)}건')  # 꺼내기 전에 먼저 알림
         self.orders.put(order)
 

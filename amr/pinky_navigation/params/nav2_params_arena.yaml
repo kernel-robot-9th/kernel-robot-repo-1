@@ -58,6 +58,7 @@ bt_navigator:
       plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
     navigate_through_poses:
       plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    default_nav_through_poses_bt_xml: "/home/omen/team/kernel-robot-repo-1/amr/pinky_navigation/params/navigate_through_poses_arena.xml"
 
     error_code_names:
       - compute_path_error_code
@@ -80,14 +81,14 @@ controller_server:
       lookahead_dist: 0.22
       use_velocity_scaled_lookahead_dist: true
       lookahead_time: 1.0
-      min_lookahead_dist: 0.12
+      min_lookahead_dist: 0.16   # 통로 내 좌우 피시테일 흔들림 방지 (0.12 -> 0.16)
       max_lookahead_dist: 0.30
       curvature_lookahead_dist: 0.25
       use_fixed_curvature_lookahead: false
 
       # 제자리 회전 (헤딩 정렬)
       use_rotate_to_heading: true
-      rotate_to_heading_min_angle: 0.6   # 10/28: 0.35 -> 0.6 rad (조금 틀어진 건 앞으로 가며 맞춤, 제자리 회전 줄임)
+      rotate_to_heading_min_angle: 0.85   # ~48° 미만은 직진하며 보정, 통로 내 스핀 충돌 방지 (0.6 -> 0.85)
       rotate_to_heading_angular_vel: 0.7
 
       # 커브길 감속
@@ -97,9 +98,9 @@ controller_server:
 
       # 장애물 접근 시 감속 (Cost Regulated)
       use_cost_regulated_linear_velocity_scaling: true
-      cost_scaling_dist: 0.10   # 10/28: 0.20 -> 0.10 (벽 10cm 안에서만 감속)
+      cost_scaling_dist: 0.04   # 벽 감속 임계 축소 (0.10 -> 0.04)
       cost_scaling_gain: 1.0
-      inflation_cost_scaling_factor: 3.0   # 10/28: 코스트맵 cost_scaling_factor(3.0) 와 맞춤
+      inflation_cost_scaling_factor: 6.0   # 코스트맵 inflation_layer 와 맞춤 (3.0 -> 6.0)
 
       # 목적지 접근 시 감속 및 정렬
       approach_velocity_scaling_dist: 0.30
@@ -107,7 +108,7 @@ controller_server:
 
       # 안전 및 충돌 방지: 소형 아레나에서 오발동으로 인한 멈춤(Lock) 방지 위해 false
       use_collision_detection: true   # 10/28: 다시 켬 - 꺼져 있어 벽에 계속 부딪히고, 부딪힐 때 바퀴가 미끄러져 위치 추정이 깨지던 문제
-      max_allowed_time_to_collision_up_to_carrot: 0.5   # 10/28: 1.0 -> 0.5 (충돌 예측을 덜 앞서 함)
+      max_allowed_time_to_collision_up_to_carrot: 0.3   # 과도한 조기 충돌 예측 정지 완화 (0.5 -> 0.3)
       max_robot_pose_search_dist: 1.0
       transform_tolerance: 0.2
 
@@ -159,11 +160,10 @@ local_costmap:
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
-      # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
-      # Front body: width 150mm (y=±0.075m), Rear tray: width 280mm (y=±0.140m), Rear end: x=-0.28m
-      footprint_padding: 0.0   # 10/28: 여유 없음
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.099], [-0.153, -0.099], [-0.153, 0.126], [-0.063, 0.126], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 비대칭 적재판 반영 (왼쪽 +y: 140mm*0.9=0.126, 오른쪽 -y: 110mm*0.9=0.099)
+      resolution: 0.01   # 고해상도화 (0.02 -> 0.01, 1cm)
+      # 비대칭 'ㅗ' Footprint + 3mm 패딩 반영 (실제 외곽 + 3mm 마진)
+      footprint_padding: 0.0
+      footprint: '[[0.083, 0.068], [0.083, -0.068], [-0.0735, -0.068], [-0.0735, -0.113], [-0.183, -0.113], [-0.183, 0.143], [-0.0735, 0.143], [-0.0735, 0.068]]'
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -181,20 +181,20 @@ local_costmap:
           obstacle_min_range: 0.08
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
-        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
+        cost_scaling_factor: 6.0   # 벽 5cm 벗어나면 감속 해제 (3.0 -> 6.0)
+        inflation_radius: 0.18   # 벽면 여유 확보 위해 0.15 -> 0.18 (+3cm 미세 상향, 44cm 통로 중앙 8cm 여유폭 확보)
       always_send_full_costmap: True
 
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint_padding: 0.0   # 10/28: 여유 없음
+      footprint_padding: 0.0
       update_frequency: 1.0
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_footprint
-      # Reflect 270x100mm rear cargo tray (T-shaped polygon footprint with 5mm margin)
-      footprint: '[[0.072, 0.0585], [0.072, -0.0585], [-0.063, -0.0585], [-0.063, -0.099], [-0.153, -0.099], [-0.153, 0.126], [-0.063, 0.126], [-0.063, 0.0585]]'   # 10/28: 실측 x 0.9, 비대칭 적재판 반영 (왼쪽 +y: 140mm*0.9=0.126, 오른쪽 -y: 110mm*0.9=0.099)
+      # 비대칭 'ㅗ' Footprint + 3mm 패딩 반영 (실제 외곽 + 3mm 마진)
+      footprint: '[[0.083, 0.068], [0.083, -0.068], [-0.0735, -0.068], [-0.0735, -0.113], [-0.183, -0.113], [-0.183, 0.143], [-0.0735, 0.143], [-0.0735, 0.068]]'
       resolution: 0.02   # 10/28: 0.025 -> 0.02 (맵 해상도와 같게. 0.025 면 벽이 한 칸 두꺼워져 7cm 여유 통로를 못 지나감)
       track_unknown_space: true
       plugins: ["static_layer", "inflation_layer"]   # 10/27: 라이다 장애물 층 뺌 - 위치·지연 오차로 잘못 찍힌 장애물이 경로 계획을 막던 문제. 실제 장애물은 로컬 코스트맵이 맡음
@@ -217,8 +217,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0   # 10/28: 7.5 -> 3.0 (벽 비용이 천천히 줄어 통로 가운데가 가장 쌈)
-        inflation_radius: 0.25   # 10/28: 0.20 -> 0.25 (통로 양쪽 벽 비용이 겹쳐 가운데로 다니게)
+        cost_scaling_factor: 6.0   # 벽 5cm 벗어나면 감속 해제 (3.0 -> 6.0)
+        inflation_radius: 0.18   # 벽면 여유 확보 위해 0.15 -> 0.18 (+3cm 미세 상향, 44cm 통로 중앙 8cm 여유폭 확보)
       always_send_full_costmap: True
 
 map_saver:
