@@ -46,6 +46,9 @@ def main(args=None):
     out.declare_parameter('output_topic', '/couping/sim/image/compressed')
     out.declare_parameter('rate', 5.0)          # Hz, 화면용이라 낮게
     out.declare_parameter('jpeg_quality', 70)
+    out.declare_parameter('zoom', 1.0)          # 1.0 = 그대로, 1.5 = 1.5배 확대
+    out.declare_parameter('center_x', 0.5)      # 자를 중심 (영상 가로 비율 0~1)
+    out.declare_parameter('center_y', 0.5)
     get = lambda n: out.get_parameter(n).value  # noqa: E731
     sim_domain = int(get('sim_domain'))
     if str(sim_domain) == os.environ.get('ROS_DOMAIN_ID', '0'):
@@ -70,6 +73,13 @@ def main(args=None):
                 out.get_logger().warn(f'지원하지 않는 영상 형식: {msg.encoding}')
                 state['warned'] = True
             return
+        z = max(1.0, float(get('zoom')))
+        if z > 1.01:
+            h, w = img.shape[:2]
+            cw, ch = int(w / z), int(h / z)
+            x0 = min(max(int(w * float(get('center_x')) - cw / 2), 0), w - cw)
+            y0 = min(max(int(h * float(get('center_y')) - ch / 2), 0), h - ch)
+            img = cv2.resize(img[y0:y0 + ch, x0:x0 + cw], (w, h), interpolation=cv2.INTER_LINEAR)
         ok, jpg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, quality])
         if not ok:
             return
