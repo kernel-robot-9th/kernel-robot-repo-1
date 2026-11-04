@@ -59,12 +59,17 @@ class UsbTooSlow(RuntimeError):
 class RealSense:
     """컬러에 정렬된 깊이를 함께 주는 RealSense. grab() -> (bgr, depth_m) 또는 None."""
 
-    def __init__(self, width, height, fps):
+    def __init__(self, width, height, fps, usb2_ok=False):
         import pyrealsense2 as rs
         self.rs = rs
+        self.usb2 = False
         devs = rs.context().query_devices()
         if len(devs) and not devs[0].get_info(rs.camera_info.usb_type_descriptor).startswith('3'):
-            raise UsbTooSlow(f"USB {devs[0].get_info(rs.camera_info.usb_type_descriptor)} 로 연결됨")
+            usb = devs[0].get_info(rs.camera_info.usb_type_descriptor)
+            if not usb2_ok:
+                raise UsbTooSlow(f"USB {usb} 로 연결됨")
+            # USB 2 에서는 1280x720 컬러+깊이가 안 됨 → 640x480@30 (10/19 확인: 약 18fps, 깊이 유효 72%)
+            width, height, fps, self.usb2 = 640, 480, 15, True  # 30fps 는 USB 2 직결 포트에서 프레임이 자주 끊김 (10/21)
         self.pipe = rs.pipeline()
         cfg = rs.config()
         cfg.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
@@ -73,14 +78,25 @@ class RealSense:
         self.scale = profile.get_device().first_depth_sensor().get_depth_scale()
         self.align = rs.align(rs.stream.color)
         self.intr = None
-        self.name = profile.get_device().get_info(rs.camera_info.name)
+        self.timeout = 8000 if self.usb2 else 2000  # USB 2 는 프레임이 띄엄띄엄 와서 길게 기다림 (10/21)
+        self.name = profile.get_device().get_info(rs.camera_info.name) + (
+            ' [USB 2: 640x480@15 저해상도 모드]' if self.usb2 else '')
 
     def flush(self, n=2):
         for _ in range(n):  # 큐에 쌓인 지난 프레임 버리기
-            self.pipe.wait_for_frames(2000)
+            try:
+                self.pipe.wait_for_frames(self.timeout)
+            except RuntimeError:
+                if not self.usb2:
+                    raise
 
     def grab(self):
-        frames = self.align.process(self.pipe.wait_for_frames(2000))
+        try:
+            frames = self.align.process(self.pipe.wait_for_frames(self.timeout))
+        except RuntimeError:
+            if self.usb2:  # 안 온 프레임은 건너뛰고 들어온 것만 씀
+                return None
+            raise
         cf, df = frames.get_color_frame(), frames.get_depth_frame()
         if not cf or not df:
             return None
@@ -170,6 +186,9 @@ class ShelfVision(Node):
         self.declare_parameter('handeye_file', '~/couping_ws/calib/handeye.json')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('grasp_center', True)     # 앞면 대신 컵 중심(반지름만큼 안쪽)을 목표로
+        self.declare_parameter('usb2_fallback', True)    # USB 2 로 잡히면 640x480 으로라도 동작 (False 면 리셋만 반복)
+        # 10/19 측정: 같은 컵 12개를 640x480 으로 보면 1280x720 보다 x +52mm (y·z 는 거의 같음)
+        self.declare_parameter('usb2_offset_mm', [-52.0, 0.0, 0.0])
         self.declare_parameter('max_depth', 1.8)         # 진열대 컵이 이보다 멀게 나오면 깊이 이상 → 카메라 다시 열기 (m)
 
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -244,7 +263,10 @@ class ShelfVision(Node):
         if self.T_base_cam is None or xyz is None:
             return None
         p = self.T_base_cam[:3, :3] @ np.asarray(xyz) + self.T_base_cam[:3, 3]
-        return [round(float(v) * 1000, 1) for v in p]
+        mm = p * 1000.0
+        if getattr(self.cam, 'usb2', False):  # 보정값은 1280x720 기준이라 USB 2(640x480) 모드에서 생기는 어긋남을 되돌림
+            mm = mm + np.asarray(self.p('usb2_offset_mm'), float)
+        return [round(float(v), 1) for v in mm]
 
     # ---------- 카메라 ----------
     def open_camera(self):
@@ -253,10 +275,11 @@ class ShelfVision(Node):
         with self.lock:
             try:
                 d = self.p('image_dir')
-                self.cam = ImageFolder(d) if d else RealSense(self.p('width'), self.p('height'), self.p('fps'))
+                self.cam = ImageFolder(d) if d else RealSense(self.p('width'), self.p('height'), self.p('fps'),
+                                                                     usb2_ok=self.p('usb2_fallback'))
                 self.get_logger().info(f'입력 연결: {self.cam.name}. /couping/vision/detect 대기 중')
-            except UsbTooSlow as e:  # 리셋하면 대부분 USB 3 로 다시 잡힘 (30초에 한 번만)
-                if time.monotonic() - getattr(self, '_last_reset', -1e9) > 30.0:
+            except UsbTooSlow as e:  # 리셋하면 대부분 USB 3 로 다시 잡힘 (10초에 한 번만)
+                if time.monotonic() - getattr(self, '_last_reset', -1e9) > 10.0:
                     self._last_reset = time.monotonic()
                     self.get_logger().warn(f'{e} → 카메라를 리셋합니다 (계속되면 다시 꽂아 주세요)')
                     try:
@@ -358,6 +381,15 @@ class ShelfVision(Node):
         """여러 장 찍어 인식 → (성공 여부, 결과 dict 또는 실패 이유).
         깊이가 말이 안 되게 멀면(카메라가 다시 붙은 뒤 생기던 문제) 카메라를 다시 열고 한 번 더 인식."""
         ok, out = self.detect_once()
+        if not ok and isinstance(out, str) and out.startswith('카메라'):
+            # 카메라가 순간적으로 끊김(USB 허브 등) → 다시 열고 한 번 더
+            self.get_logger().warn(f'{out} → 카메라를 다시 열고 한 번 더 인식')
+            time.sleep(1.0)
+            self.open_camera()
+            if self.cam is None:  # hardware_reset() 직후 재열거 대기
+                time.sleep(4.0)
+                self.open_camera()
+            ok, out = self.detect_once()
         if ok and self.depth_broken(out['items']):
             self.drop_camera(f"깊이 이상 (컵 거리 중앙값 > {self.p('max_depth')} m) → 카메라 다시 열기")
             self.open_camera()

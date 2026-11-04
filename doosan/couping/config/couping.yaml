@@ -8,14 +8,17 @@
     # 자세는 ~/couping_ws/calib/poses.json (python3 -m couping.teach_pose front|place_above|place|place_2..)
     # 핑키 자세가 없을 때: return = 진열대 제자리에 도로 놓기(반복 시험), hold = front 에서 들고 대기(1품목만)
     no_place: return
-    vel: 60.0                   # 일반 직선 이동 mm/s
-    vel_slow: 20.0              # 컵 근처·내려놓기 mm/s
-    velj: 30.0                  # 관절 이동 deg/s
-    open: 375                   # 접근할 때 그리퍼 열림 (0 닫힘 ~ 750 완전 열림)
-    release: 375                # 내려놓을 때 여는 정도
+    vel: 300.0                  # 일반 직선 이동 mm/s (10/28 150 -> 300. 컵 근처는 vel_slow)
+    acc: 300.0                  # 일반 직선 가속 mm/s^2
+    vel_slow: 20.0              # 컵 근처(전진·잡기·들기·빼기) mm/s - 조심해야 해서 그대로
+    velj: 150.0                 # 관절 이동 deg/s (10/28 60 -> 150, E0509 최고속도 180deg/s 대비 ~83%)
+    accj: 150.0                 # 관절 가속 deg/s^2
+    open: 450                   # 접근할 때 그리퍼 열림 (0 닫힘 ~ 750 완전 열림)
+    release: 450                # 내려놓을 때 여는 정도
     force: 300                  # 잡는 힘
+    grip_wait: 3.0               # 그리퍼를 닫은 뒤 다 잡을 때까지 기다림 s (그다음 들어올림)
     approach: 150.0             # 컵 정면 대기 거리 mm
-    depth: 7.0                  # 컵 중심 대비 추가 전진 mm (tide 시험 후 +7)
+    depth: 37.0                 # 컵 중심 대비 추가 전진 mm (10/15 +7, 10/22 +10, 10/26 +10, +10)
     dz: 0.0                     # 목표 높이 보정 mm
     lift: 15.0                  # 잡은 뒤 들어올림 mm
     retries: 2                  # 상자에 넣은 뒤 카메라로 확인해 진열대에 그대로 있으면 다시 시도하는 횟수
@@ -29,6 +32,8 @@
     vote_ratio: 0.6             # 5장 중 3장 이상에서 보여야 인정
     min_depth_valid: 0.15       # 박스 안 깊이 유효 비율 (투명 컵은 20% 안팎)
     max_depth: 1.8              # 컵이 이보다 멀게 나오면 깊이 이상으로 보고 카메라를 다시 엶 (m)
+    usb2_fallback: false        # USB 2.1 로 떨어지면 hardware_reset() 으로 USB 3.0 복구
+    usb2_offset_mm: [-52.0, 0.0, 0.0]   # USB 2 모드에서 로봇 좌표 보정 (1280x720 기준과 비교해 측정)
     camera_frame: camera_color_optical_frame
     preview_rate: 0.0           # 예: 2.0 이면 미리보기 그림을 2Hz 로 발행
     # 카메라→두산 베이스 변환. 강의 캘리브 GUI(~/HamdEyeCal) 결과 .npy 또는 couping.handeye_calib 의 .json

@@ -8,13 +8,17 @@
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false vision:=true
     # 로봇·카메라 없이 주문 신호 흐름만 시험
     ros2 launch couping_integration integration.launch.py dsr_bringup:=false pinky:=false omx:=false fake:=true
-핑키 쪽 bringup·navigation 은 핑키에서 따로 실행합니다.
+    # Gazebo 디지털 트윈 화면을 관리자 화면에 (트윈은 다른 터미널: ros2 launch couping_integration twin.launch.py real_domain:=<ROS_DOMAIN_ID>)
+    ros2 launch couping_integration integration.launch.py ... sim_view:=true
+핑키 bringup 은 핑키에서, Nav2(pinky_navigation bringup_arena) 는 따로 실행합니다.
+정밀 도킹 노드(pinky_precision_docking)는 pinky:=true docking:=true(기본) 일 때 여기서 함께 띄웁니다
+(핑키 카메라 /camera/image_raw/compressed 와 /scan 을 Wi-Fi 로 받음).
 """
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -54,7 +58,14 @@ def generate_launch_description():
         DeclareLaunchArgument('signal_only', default_value='false',
                               description='신호만 주고받기: 두산은 관절 각도, OMX 는 모터 위치만 읽고, 핑키는 주행 대신 pinky_signal 응답'),
         DeclareLaunchArgument('pinky', default_value='true', description='핑키 주행 단계 포함 (false 면 건너뜀)'),
+        DeclareLaunchArgument('docking', default_value='true', description='핑키 ArUco 정밀 도킹 (false 면 Nav2 좌표까지만)'),
         DeclareLaunchArgument('fake', default_value='false', description='두산 picker · OMX 를 로봇·카메라 없이 흉내 (신호 흐름 시험)'),
+        DeclareLaunchArgument('sim_view', default_value='false',
+                              description='Gazebo 디지털 트윈 카메라를 관리자 화면(/sim.mjpg)에 보냄'),
+        DeclareLaunchArgument('sim_domain', default_value='10', description='디지털 트윈 ROS_DOMAIN_ID'),
+        DeclareLaunchArgument('sim_zoom', default_value='1.0', description='Gazebo 영상 확대 배율 (기본 1.0)'),
+        DeclareLaunchArgument('sim_center_x', default_value='0.5', description='Gazebo 영상 확대 중심 X (0.0~1.0)'),
+        DeclareLaunchArgument('sim_center_y', default_value='0.5', description='Gazebo 영상 확대 중심 Y (0.0~1.0)'),
         DeclareLaunchArgument('manual_transfer', default_value='false',
                               description='핑키 없이: 피킹 뒤 사람이 박스를 OMX 로 옮기고 관리자 화면에서 확인 (pinky:=false 와 함께)'),
         DeclareLaunchArgument('mode', default_value='real', description='real 또는 virtual(에뮬레이터, Docker 필요)'),
@@ -65,13 +76,21 @@ def generate_launch_description():
         DeclareLaunchArgument('vision', default_value='false', description='진열대 비전 노드 실행 (RealSense + YOLO)'),
         DeclareLaunchArgument('web', default_value='true', description='고객·관리자 웹 화면 (http://<IP>:8080/, /admin)'),
         DeclareLaunchArgument('web_port', default_value='8080'),
+        DeclareLaunchArgument('orchestrator', default_value='true',
+                              description='주문 오케스트레이터 (웹 주문을 tools/web_order_run.py → order_run.sh 로 돌릴 땐 false)'),
 
         dsr_bringup,
-        IncludeLaunchDescription(
+        # GroupAction 으로 감싸야 vision.launch 에 넘긴 config(두산 설정)가 바깥 'config'(연동 설정)를 덮어쓰지 않음
+        GroupAction([IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('couping'), 'launch', 'vision.launch.py')),
-            launch_arguments={'config': doosan_config}.items(),
+            launch_arguments={'config': doosan_config}.items())],
             condition=IfCondition(LaunchConfiguration('vision'))),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory('pinky_precision_docking'), 'launch', 'precision_docking.launch.py')),
+            condition=IfCondition(PythonExpression(["'", LaunchConfiguration('pinky'), "' == 'true' and '",
+                                                    LaunchConfiguration('docking'), "' == 'true'"]))),
         Node(package='couping', executable='doosan_picker', namespace=LaunchConfiguration('robot_name'),
              parameters=[doosan_config, {'robot_model': LaunchConfiguration('model'),
                                   'signal_only': signal_only, 'fake': fake}],
@@ -79,6 +98,12 @@ def generate_launch_description():
         Node(package='couping_integration', executable='omx_packer',
              parameters=[config, {'signal_only': signal_only, 'fake': fake}],
              output='screen', condition=IfCondition(omx)),
+        Node(package='couping_integration', executable='sim_camera', output='screen',
+             parameters=[{'sim_domain': ParameterValue(LaunchConfiguration('sim_domain'), value_type=int),
+                          'zoom': ParameterValue(LaunchConfiguration('sim_zoom'), value_type=float),
+                          'center_x': ParameterValue(LaunchConfiguration('sim_center_x'), value_type=float),
+                          'center_y': ParameterValue(LaunchConfiguration('sim_center_y'), value_type=float)}],
+             condition=IfCondition(LaunchConfiguration('sim_view'))),
         Node(package='couping_integration', executable='web_ui', output='screen',
              parameters=[{'port': ParameterValue(LaunchConfiguration('web_port'), value_type=int)}],
              condition=IfCondition(LaunchConfiguration('web'))),
@@ -87,6 +112,8 @@ def generate_launch_description():
              parameters=[config, {'signal_only': signal_only,
                                   'enable_picker': ParameterValue(doosan, value_type=bool),
                                   'enable_pinky': ParameterValue(LaunchConfiguration('pinky'), value_type=bool),
+                                  'docking': ParameterValue(LaunchConfiguration('docking'), value_type=bool),
                                   'enable_packer': ParameterValue(omx, value_type=bool),
-                                  'manual_transfer': ParameterValue(LaunchConfiguration('manual_transfer'), value_type=bool)}]),
+                                  'manual_transfer': ParameterValue(LaunchConfiguration('manual_transfer'), value_type=bool)}],
+             condition=IfCondition(LaunchConfiguration('orchestrator'))),
     ])

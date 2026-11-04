@@ -47,6 +47,9 @@ h2{margin:0;font-size:16px}
 .camhd{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;color:#E6E8EE}
 .camimg{aspect-ratio:16/9;background:#1C1F26;display:flex;align-items:center;justify-content:center;color:#A3A9B6}
 .camimg img{width:100%;height:100%;object-fit:contain;display:block}
+.camsrc{display:inline-flex;border:1px solid #3A3F4A;border-radius:8px;overflow:hidden}
+.camsrc button{min-height:32px;padding:0 12px;border:0;background:#262A33;color:#A3A9B6;font-weight:600;cursor:pointer}
+.camsrc button[aria-pressed="true"]{background:#3A3F4A;color:#E6E8EE}
 .robot{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#F7F8FA}
 .log{display:flex;flex-direction:column;gap:6px;font-size:12px}
 .empty{padding:22px 0;text-align:center;color:var(--sub);font-size:13px;border:1px dashed #D5D9E1;border-radius:10px}
@@ -93,7 +96,8 @@ h2{margin:0;font-size:16px}
 </div>
 </div>
 <div class="cam">
-<div class="camhd"><span class="chip" style="background:#3A1B1B;color:#FFB4B4"><span class="d" style="background:#F26B6B"></span>LIVE</span><strong>진열대 카메라</strong><span style="font-size:12px;color:#A3A9B6">RealSense D455F · YOLO11s</span>
+<div class="camhd"><span class="chip" style="background:#3A1B1B;color:#FFB4B4"><span class="d" style="background:#F26B6B"></span>LIVE</span><strong id="camTitle">진열대 카메라</strong><span id="camSub" style="font-size:12px;color:#A3A9B6">RealSense D455F · YOLO11s</span>
+<span class="camsrc" role="group" aria-label="화면 선택"><button type="button" data-src="vision" aria-pressed="true">진열대</button><button type="button" data-src="sim" aria-pressed="false">시뮬레이션</button></span>
 <button class="btn" id="camBtn" style="margin-left:auto;min-height:32px;background:#262A33;border-color:#3A3F4A;color:#E6E8EE">화면 켜기</button></div>
 <div class="camimg" id="camBox"><span id="camMsg">화면 켜기를 누르면 실시간 영상이 나와요</span></div>
 <div style="display:flex;flex-wrap:wrap;gap:18px;padding:12px 16px;font-size:12px;color:#A3A9B6"><span>마지막 인식 <b style="color:#E6E8EE" id="detCount">-</b></span><span id="stockLine"></span></div>
@@ -109,9 +113,9 @@ h2{margin:0;font-size:16px}
 <script>
 const COLORS = {tomato:'#D64545', carrot:'#E07B1F', salad:'#2F9455', bath_tissue:'#3E7BE6', tide:'#C99A17', paper_towel:'#8B5CD6'};
 const LOC = {tomato:'1층 오른쪽', carrot:'2층 오른쪽', salad:'3층 오른쪽', bath_tissue:'2층 왼쪽', tide:'1층 왼쪽', paper_towel:'3층 왼쪽'};
-const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','두산'],['포장 시작','핑키 → OMX'],['배송 시작','핑키'],['배송 완료','']];
-const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PACK:'포장 시작', WAIT_TRANSFER:'박스 옮기는 중', PACKING:'포장 중', RETURNING:'배송 시작', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
-const TONE = {WAIT_TRANSFER:'warn', PICKING:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
+const STAGES = [['주문 확인','오케스트레이터'],['상품 담는 중','핑키 → 창고, 두산'],['포장 시작','핑키 → OMX, OMX'],['배송 시작','핑키'],['배송 완료','']];
+const STATE_KO = {sent:'전송됨', queued:'대기', started:'주문 확인', PICKING:'상품 담는 중', MOVING_TO_PICK:'핑키 창고로 이동', WAIT_TRANSFER:'박스 옮기는 중', MOVING_TO_PACK:'핑키 포장 구역으로 이동', PACKING:'포장 중', RETURNING:'핑키 복귀', DONE:'배송 완료', ERROR:'실패', rejected:'거부'};
+const TONE = {WAIT_TRANSFER:'warn', PICKING:'run', MOVING_TO_PICK:'run', MOVING_TO_PACK:'run', PACKING:'run', RETURNING:'run', started:'run', DONE:'ok', ERROR:'warn', rejected:'warn'};
 const ROBOTS = [['doosan','두산 E0509'],['vision','진열대 카메라'],['pinky','핑키'],['omx','OMX']];
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -148,7 +152,7 @@ function render() {
       return `<div class="grid4" style="padding:10px 4px;border-bottom:1px solid #F1F2F5"><span style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:${COLORS[l.item]}"></span><strong>${esc(l.name)}</strong></span><span style="font-size:13px;color:#3D4350">${LOC[l.item] || ''}</span><span style="text-align:right"><span class="pill ${t}">${esc(l.state)}</span></span></div>`;
     }).join('')}` : '<div class="empty">주문을 고르면 상세가 보여요</div>';
 
-  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','PICKING','MOVING_TO_PACK','WAIT_TRANSFER','PACKING','RETURNING'].includes(o.state) && o.id === sel);
+  const cur = os.find((o) => o.id === S.current) || os.find((o) => ['queued','started','MOVING_TO_PICK','PICKING','WAIT_TRANSFER','MOVING_TO_PACK','PACKING','RETURNING'].includes(o.state) && o.id === sel);
   $('curTitle').textContent = cur ? `진행 중 · 주문 ${cur.id}` : '진행 중인 주문 없음';
   $('curItems').textContent = cur ? summary(cur) : '';
   const st = cur ? cur.stage : -2;
@@ -181,11 +185,22 @@ async function ctl(name) {
 $('stopBtn').addEventListener('click', () => ctl('stop'));
 $('resumeBtn').addEventListener('click', () => ctl('resume'));
 $('confirmBtn').addEventListener('click', () => ctl('confirm'));
-$('camBtn').addEventListener('click', () => {
-  const on = !$('camBox').querySelector('img');
-  $('camBox').innerHTML = on ? '<img src="/camera.mjpg?' + Date.now() + '" alt="진열대 카메라 실시간 영상">' : '<span id="camMsg">화면이 꺼져 있어요</span>';
+const CAM = {vision: {url: '/camera.mjpg', title: '진열대 카메라', sub: 'RealSense D455F · YOLO11s'},
+             sim: {url: '/sim.mjpg', title: '시뮬레이션', sub: 'Gazebo 디지털 트윈 · 위에서 본 화면'}};
+let camSrc = 'vision';
+function camShow(on) {
+  const c = CAM[camSrc];
+  $('camBox').innerHTML = on ? '<img src="' + c.url + '?' + Date.now() + '" alt="' + c.title + ' 실시간 영상">' : '<span id="camMsg">화면이 꺼져 있어요</span>';
   $('camBtn').textContent = on ? '화면 끄기' : '화면 켜기';
-});
+}
+$('camBtn').addEventListener('click', () => camShow(!$('camBox').querySelector('img')));
+document.querySelectorAll('.camsrc button').forEach((b) => b.addEventListener('click', () => {
+  camSrc = b.dataset.src;
+  document.querySelectorAll('.camsrc button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $('camTitle').textContent = CAM[camSrc].title;
+  $('camSub').textContent = CAM[camSrc].sub;
+  if ($('camBox').querySelector('img')) camShow(true);  // 켜져 있으면 바로 바꿔 보여줌
+}));
 
 const es = new EventSource('/events');
 es.onopen = () => { $('conn').className = 'chip ok'; $('conn').lastChild.textContent = '서버 연결됨'; };

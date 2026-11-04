@@ -1,0 +1,12 @@
+diff --git a/src/lerobot/cameras/opencv/camera_opencv.py b/src/lerobot/cameras/opencv/camera_opencv.py
+index f3289ddc..d67b2fd7 100644
+--- a/src/lerobot/cameras/opencv/camera_opencv.py
++++ b/src/lerobot/cameras/opencv/camera_opencv.py
+@@ -455,6 +455,7 @@ class OpenCVCamera(Camera):
+             except DeviceNotConnectedError:
+                 break
+             except Exception as e:
++                time.sleep(0.05)
+                 if failure_count <= 10:
+                     failure_count += 1
+                     logger.warning(f"Error reading frame in background thread for {self}: {e}")

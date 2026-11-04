@@ -21,7 +21,8 @@ omx/
 ├── lerobot_patch/
 │   ├── bi_omx_follower/    # LeRobot에 추가할 양팔 follower 코드
 │   ├── bi_omx_leader/      # LeRobot에 추가할 양팔 leader 코드
-│   └── register.patch      # 위 코드를 LeRobot에 등록하는 변경분
+│   ├── register.patch      # 위 코드를 LeRobot에 등록하는 변경분
+│   └── early_stop.patch    # (선택) 그리퍼 값으로 에피소드 조기 종료, register.patch 다음에 적용
 └── models/
     └── README.md           # 모델 파일 다운로드 링크와 놓는 위치
 ```
@@ -55,6 +56,25 @@ python -c 'from lerobot.robots import bi_omx_follower; from lerobot.teleoperator
 ```
 
 `import ok`가 나오면 완료입니다. `git apply`가 실패하면 LeRobot 버전이 다른 것이니 이슈로 알려주세요.
+
+### 1-2-1. (선택) 조기 종료 패치
+
+정책 실행 중 관절 값이 조건에 닿으면 `episode_time` 전에 에피소드를 끝냅니다. 연동(`omx_packer`)에서 포장이 끝나자마자 다음 단계로 넘어가려고 씁니다.
+환경변수 `COUPING_EARLY_STOP`이 없으면 아무 동작도 하지 않고, 텔레옵·데이터 수집에는 영향이 없습니다(정책 실행 때만).
+
+```bash
+cd <LeRobot 저장소 루트>
+git apply <이 저장소 경로>/omx/lerobot_patch/early_stop.patch   # register.patch 다음에
+```
+
+| 환경변수 | 예 | 뜻 |
+|---|---|---|
+| `COUPING_EARLY_STOP` | `left_gripper.pos>=55:0@5` | 시작 5초 뒤부터 왼쪽 그리퍼 값이 55 이상이 되면 0초 뒤(즉시) 종료 |
+| `COUPING_EARLY_STOP_DRYRUN` | `1` | 끝내지 않고 판정만 출력, 값을 0.5초마다 출력 (기준값 정할 때) |
+
+형식은 `<관측 키><>= 또는 <=><값>[:<지연 초>][@<무시할 시작 초>]`이고, 관측 키는 `left_` / `right_` + 모터 이름 + `.pos`(0~100)입니다.
+현장 기준: 왼쪽 그리퍼는 벌릴수록 값이 커지고 최대로 벌리면 약 57, 시작 자세는 62 근처라 처음 5초는 무시합니다.
+종료되면 로그에 `[couping] ===== 작업 종료 (N초) =====`가 찍힙니다.
 
 ### 1-3. 시리얼 포트 권한과 포트 이름
 
@@ -206,3 +226,7 @@ done / fail 신호: 현재 이 스크립트는 ROS 토픽으로 `done`/`fail`을
 - 에피소드 시간(`EPISODE_TIME`)이 지나거나 키보드 오른쪽 방향키를 누르면 에피소드가 끝나고 프로세스가 종료됩니다.
 - 오류가 나면 에러 메시지와 함께 비정상 종료합니다. 종료 코드로 구분하는 방식은 아직 검증하지 않았습니다.
 - 학습된 정책은 작업 성공 여부를 스스로 판단하지 않습니다. 토픽 연동이 필요하면 팀에서 정한 토픽 이름, 메시지 타입, 성공 판단 기준에 맞춰 발행하는 래퍼 노드를 추가해야 합니다.
+
+### 5-6. 캘리브레이션 파일
+
+`omx/calibration/`의 `bi_omx_follower_left.json`, `bi_omx_follower_right.json`은 학습 때 사용한 값입니다(공장 기본값: homing_offset 0, range 0~4095). 실행하는 PC의 `~/.cache/huggingface/lerobot/calibration/robots/omx_follower/`에 복사하세요: `mkdir -p ~/.cache/huggingface/lerobot/calibration/robots/omx_follower && cp omx/calibration/*.json ~/.cache/huggingface/lerobot/calibration/robots/omx_follower/`. 없으면 처음 실행할 때 같은 기본값으로 자동 생성됩니다.

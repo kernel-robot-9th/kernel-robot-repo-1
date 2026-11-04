@@ -32,7 +32,7 @@ precision_docking_node:
 
     target_distance: 0.10             # 목표 도킹 완료 거리 (m)
     distance_tolerance: 0.01          # 거리 허용 오차 (0.01m = 1cm)
-    center_tolerance: 0.012           # 좌우 중심 허용 오차 (0.012m = 1.2cm 실물 노이즈 안정화 및 불필요한 후진 방지)
+    center_tolerance: 0.02            # 좌우 중심 허용 오차 (10/23: 0.012 -> 0.02, 불필요한 후진·재진입 방지)
     angle_tolerance_deg: 2.0          # 수직 정렬 각도 허용 오차 (2.0 deg)
     target_wall_angle_deg: 0.0        # 목표 벽면 상대 각도 (0.0: 전면 범퍼 11자 평행, 90.0: 측면 평행)
     wall_align_tol_deg: 0.5           # 벽면 평행 정렬 허용 각도 오차 (0.5 deg 이내 초정밀 정렬)
@@ -44,9 +44,9 @@ precision_docking_node:
     kp_linear: 0.55
     kp_lateral: 1.8
     kp_angular: 1.8
-    max_linear_vel: 0.08
+    max_linear_vel: 0.12
     min_linear_vel: 0.02
-    max_angular_vel: 0.30
+    max_angular_vel: 0.45
     min_angular_vel: 0.03
     invert_angular: false
     enable_wide_turn: false
@@ -57,7 +57,7 @@ precision_docking_node:
     ema_alpha: 0.6                    # 지터 제거용 EMA 필터 가중치
     loss_timeout: 0.8                 # 마커 소실 판정 시간 (초)
     lidar_timeout: 0.6                # LiDAR 데이터 유효 시간 (초)
-    search_angular_vel: 0.15          # SEARCH 상태 회전 속도 (rad/s)
+    search_angular_vel: 0.25          # SEARCH 상태 회전 속도 (rad/s)
     recovery_backup_speed: -0.04      # RECOVERY/재정렬 후진 속도 (m/s)
     recovery_backup_distance: 0.08    # RECOVERY 최대 후진 거리 (m)
     recovery_backup_duration: 2.0     # RECOVERY 후진 최대 지속 시간 (초)

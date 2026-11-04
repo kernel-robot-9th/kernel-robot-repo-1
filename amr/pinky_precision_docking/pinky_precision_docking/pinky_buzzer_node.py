@@ -6,7 +6,7 @@ Uses official 'pinkylib.Buzzer' to produce hardware melodies and reverse beeps.
 Subscribed Topics:
   - /pinky/buzzer/command (std_msgs/msg/String):
       * 'docking_complete' : Plays '도-미-솔-도' (C5-E5-G5-C6)
-      * 'reverse_start'     : Starts industrial backup beep ('삐~ 삐~', 1000Hz loop)
+      * 'reverse_start'     : Starts backup beep (1000Hz, 1s on / 1s off loop)
       * 'reverse_stop'      : Stops backup beep
 """
 
@@ -111,16 +111,22 @@ class PinkyBuzzerNode(Node):
         while self._reverse_active:
             if self.buzzer:
                 try:
+                    # 10/23: 1초 켜짐 / 1초 꺼짐 (정지 명령에 바로 반응하도록 0.05초씩 확인)
                     self.buzzer.set_buzzer_freq(1000)
                     self.buzzer.set_buzzer_duty(50)
-                    time.sleep(0.25)
+                    self._sleep_while_active(1.0)
                     self.buzzer.set_buzzer_duty(0)
-                    time.sleep(0.20)
+                    self._sleep_while_active(1.0)
                 except Exception as e:
                     self.get_logger().error(f'Error during reverse beep: {e}')
                     break
             else:
-                time.sleep(0.45)
+                self._sleep_while_active(2.0)
+
+    def _sleep_while_active(self, sec):
+        end = time.time() + sec
+        while self._reverse_active and time.time() < end:
+            time.sleep(0.05)
 
     def _stop_reverse(self):
         with self._lock:

@@ -525,42 +525,42 @@
         </collision>
         <visual name="base_visual">
           <pose>0.00000 0.00000 0.00000 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.20 0.20 0.24 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="link1_visual">
           <pose>-0.01125 0.00000 0.03400 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link2_visual">
           <pose>-0.01125 0.00000 0.09750 0 -0.45000 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link3_visual">
           <pose>-0.02310 0.00000 0.21744 0 0.25000 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link4_visual">
           <pose>0.13387 0.00000 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
           <material><ambient>0.2 0.2 0.24 1</ambient><diffuse>0.25 0.25 0.30 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="link5_visual">
           <pose>0.16257 0.00000 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="gripper_motorized_visual">
           <pose>0.19207 0.00750 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="gripper_gear_visual">
           <pose>0.19207 -0.01080 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
       </link>
@@ -577,42 +577,42 @@
         </collision>
         <visual name="base_visual">
           <pose>0.00000 0.00000 0.00000 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_01_base.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.20 0.20 0.24 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="link1_visual">
           <pose>-0.01125 0.00000 0.03400 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_02_base_tilt_Revised.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link2_visual">
           <pose>-0.01125 0.00000 0.09750 0 -0.45000 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_03_middle_verticle.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link3_visual">
           <pose>-0.02310 0.00000 0.21744 0 0.25000 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_04_middle_horizontal.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="link4_visual">
           <pose>0.13387 0.00000 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_05_tip.stl</uri></mesh></geometry>
           <material><ambient>0.2 0.2 0.24 1</ambient><diffuse>0.25 0.25 0.30 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="link5_visual">
           <pose>0.16257 0.00000 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_06_pan_Revised.stl</uri></mesh></geometry>
           <material><ambient>0.85 0.85 0.88 1</ambient><diffuse>0.92 0.92 0.95 1</diffuse><specular>0.4 0.4 0.4 1</specular></material>
         </visual>
         <visual name="gripper_motorized_visual">
           <pose>0.19207 0.00750 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_07_gripper_motorized.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
         <visual name="gripper_gear_visual">
           <pose>0.19207 -0.01080 0.17736 0 0 0</pose>
-          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
+          <geometry><mesh><scale>0.001 0.001 0.001</scale><uri>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/omx_ai/meshes/follower_08_gripper_gear.stl</uri></mesh></geometry>
           <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.22 0.22 0.26 1</diffuse><specular>0.5 0.5 0.5 1</specular></material>
         </visual>
       </link>
@@ -3399,7 +3399,7 @@
             <specular>0.2 0.2 0.2 1</specular>
             <pbr>
               <metal>
-                <albedo_map>file:///home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models/img/parking_bays.png</albedo_map>
+                <albedo_map>file:///home/omen/team/kernel-robot-repo-1/amr/pinky_precision_docking/models/img/parking_bays.png</albedo_map>
               </metal>
             </pbr>
           </material>
@@ -3414,23 +3414,23 @@
       <link name="link">
         <visual name="base">
           <pose>0 0 0.028 0 0 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
         </visual>
         <visual name="screen">
           <pose>-0.0385 0 0.098 0 0.2618 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
         </visual>
         <visual name="lidar">
           <pose>0 0 0.076 0 0 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
         </visual>
         <visual name="wheel_left">
           <pose>0 0.04055 0.028 0 0 1.5708</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
         </visual>
         <visual name="wheel_right">
           <pose>0 -0.04055 0.028 0 0 -1.5708</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
         </visual>
       </link>
     </model>
@@ -3442,24 +3442,58 @@
       <link name="link">
         <visual name="base">
           <pose>0 0 0.028 0 0 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/base_link.dae</uri></mesh></geometry>
         </visual>
         <visual name="screen">
           <pose>-0.0385 0 0.098 0 0.2618 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/screen_assy.dae</uri></mesh></geometry>
         </visual>
         <visual name="lidar">
           <pose>0 0 0.076 0 0 0</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/rplidar_c1.dae</uri></mesh></geometry>
         </visual>
         <visual name="wheel_left">
           <pose>0 0.04055 0.028 0 0 1.5708</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
         </visual>
         <visual name="wheel_right">
           <pose>0 -0.04055 0.028 0 0 -1.5708</pose>
-          <geometry><mesh><uri>file:///home/user/pinky_pro/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
+          <geometry><mesh><uri>file:///home/omen/couping_ws/src/pinky_pro/pinky_description/meshes/visual/main_wheel.dae</uri></mesh></geometry>
         </visual>
+      </link>
+    </model>
+
+    <!-- Top-down Overhead Camera for Digital Twin Web UI (/camera) -->
+    <model name="camera">
+      <static>true</static>
+      <pose>0.60 0.78 2.20 0 1.5707963 1.5707963</pose>
+      <link name="link">
+        <pose>0 0 0 0 0 0</pose>
+        <inertial>
+          <mass>0.1</mass>
+          <inertia>
+            <ixx>0.000166667</ixx>
+            <iyy>0.000166667</iyy>
+            <izz>0.000166667</izz>
+          </inertia>
+        </inertial>
+        <sensor name="camera" type="camera">
+          <camera>
+            <horizontal_fov>1.60</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>100</far>
+            </clip>
+          </camera>
+          <always_on>1</always_on>
+          <update_rate>15</update_rate>
+          <visualize>true</visualize>
+          <topic>camera</topic>
+        </sensor>
       </link>
     </model>
   </world>

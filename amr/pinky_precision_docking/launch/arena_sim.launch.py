@@ -11,20 +11,33 @@ def generate_launch_description():
     gz_sim_dir = get_package_share_directory('pinky_gz_sim')
     docking_dir = get_package_share_directory('pinky_precision_docking')
 
-    # Force GPU Hardware Acceleration in WSL2 (NVIDIA RTX 3050 Ti)
-    set_gallium = SetEnvironmentVariable('GALLIUM_DRIVER', 'd3d12')
-    set_adapter = SetEnvironmentVariable('MESA_D3D12_DEFAULT_ADAPTER_NAME', 'NVIDIA')
+    actions = []
+
+    # Digital twin uses separate ROS_DOMAIN_ID (default 10) to avoid conflict with real robot
+    sim_domain_arg = DeclareLaunchArgument(
+        'sim_domain',
+        default_value='10',
+        description='ROS_DOMAIN_ID for Gazebo simulation environment',
+    )
+    actions.append(sim_domain_arg)
+    actions.append(SetEnvironmentVariable('ROS_DOMAIN_ID', LaunchConfiguration('sim_domain')))
+
+    # GPU Hardware Acceleration: only for WSL2
+    if 'microsoft' in os.uname().release.lower():
+        actions.append(SetEnvironmentVariable('GALLIUM_DRIVER', 'd3d12'))
+        actions.append(SetEnvironmentVariable('MESA_D3D12_DEFAULT_ADAPTER_NAME', 'NVIDIA'))
 
     # Resource path for Gazebo models (including open_manipulator_x)
     models_dir = os.path.join(gz_sim_dir, 'models')
     docking_models = os.path.join(docking_dir, 'models')
-    src_models = '/home/user/pinky_pro/src/pinky_pro/pinky_gz_sim/models'
+    src_models = '/home/omen/couping_ws/src/pinky_pro/pinky_gz_sim/models'
     curr_res = os.environ.get('GZ_SIM_RESOURCE_PATH', '')
-    set_resource = SetEnvironmentVariable(
+    actions.append(SetEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH',
         f"{models_dir}:{docking_models}:{src_models}:{curr_res}"
-    )
+    ))
 
+    world_path = os.path.join(docking_dir, 'worlds', 'arena_docking.world')
     world_name_arg = DeclareLaunchArgument(
         'world_name',
         default_value='arena_docking.world',
@@ -61,6 +74,7 @@ def generate_launch_description():
             os.path.join(gz_sim_dir, 'launch', 'launch_sim.launch.xml')
         ),
         launch_arguments={
+            'world': world_path,
             'world_name': LaunchConfiguration('world_name'),
             'cam_tilt_deg': LaunchConfiguration('cam_tilt_deg'),
             'spawn_x': LaunchConfiguration('spawn_x'),
@@ -70,10 +84,7 @@ def generate_launch_description():
         }.items(),
     )
 
-    return LaunchDescription([
-        set_gallium,
-        set_adapter,
-        set_resource,
+    actions.extend([
         world_name_arg,
         cam_tilt_deg_arg,
         spawn_x_arg,
@@ -82,3 +93,5 @@ def generate_launch_description():
         headless_arg,
         sim_launch,
     ])
+
+    return LaunchDescription(actions)

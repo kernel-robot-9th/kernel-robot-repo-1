@@ -2,8 +2,11 @@
 
 주문은 /couping/order (std_msgs/String, JSON {"id": "001", "items": ["tomato", "salad"]}) 로 받아
 대기열에 넣고 하나씩
-  PICKING(두산에 pick:tomato,salad) → MOVING_TO_PACK → PACKING → RETURNING → DONE
-순서로 진행한다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
+  품목이 있는 창고 구역마다 (zone_a: 선반1 7번 마커, zone_b: 선반2 4번 마커, 구역별 품목은 *_items)
+    MOVING_TO_PICK(Nav2 로 도킹 진입 좌표) → DOCKING(ArUco 정밀 도킹) → PICKING(두산이 핑키 상자에 담음) → UNDOCKING(후진)
+  → MOVING_TO_PACK → DOCKING(5번 마커) → PACKING(OMX 포장) → UNDOCKING → [RETURNING(주차 구역 복귀)] → DONE
+순서로 진행한다. 정밀 도킹은 amr/pinky_precision_docking 의 precision_docking_node
+(/docking/target_marker_id, /docking/start, /docking_completed) 를 쓰고, docking: false 이면 Nav2 만 쓴다. 현재 상태는 /couping/state, 주문별 진행은 /couping/order/status (JSON) 에 발행한다.
 주문 입력 터미널: ros2 run couping_integration order
 /couping/start (std_srvs/Trigger) 는 품목 없는 주문(두산에 start)을 넣는다 (신호 확인용).
 /couping/stop 을 받거나 단계가 실패·시간 초과되면 핑키 주행을 취소하고 ERROR 로 멈추며,
@@ -24,15 +27,19 @@ import time
 
 import rclpy
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Bool, Int32, String
 from std_srvs.srv import Trigger
 
 from couping import catalog
+
+
+ZONES = ('zone_a', 'zone_b')  # 창고 구역 (두산이 담는 곳)
 
 
 class StageError(Exception):
@@ -46,11 +53,18 @@ class Orchestrator(Node):
         for name, default in [('signal_only', False), ('enable_picker', True), ('enable_pinky', True),
                               ('enable_packer', True), ('return_home', True),
                               ('manual_transfer', False), ('transfer_timeout', 600.0),
+                              ('pause_on_error', False),  # false: 실패한 주문은 넘기고 다음 주문 진행
                               ('picker_timeout', 120.0),  # 품목 하나당
                               ('nav_timeout', 120.0),
                               ('packer_timeout', 90.0),
                               ('nav_action', '/navigate_to_pose'), ('map_frame', 'map'),
-                              ('pack_pose', [0.0, 0.0, 0.0]), ('home_pose', [0.0, 0.0, 0.0])]:
+                              ('docking', True), ('dock_timeout', 120.0), ('undock_speed', 0.05),
+                              ('zone_a_marker', 7), ('zone_a_pose', [0.0, 0.0, 0.0]), ('zone_a_undock', 0.5),
+                              ('zone_a_items', ['']),
+                              ('zone_b_marker', 4), ('zone_b_pose', [0.0, 0.0, 0.0]), ('zone_b_undock', 0.5),
+                              ('zone_b_items', ['']),
+                              ('pack_marker', 5), ('pack_pose', [0.0, 0.0, 0.0]), ('pack_undock', 0.35),
+                              ('home_pose', [0.0, 0.0, 0.0])]:
             self.declare_parameter(name, default)
 
         self.state = 'IDLE'
@@ -70,6 +84,18 @@ class Orchestrator(Node):
         self.nav = ActionClient(self, NavigateToPose, self.get_parameter('nav_action').value)
         self.nav_goal = None
         self.stop_event = threading.Event()
+
+        # 정밀 도킹 (precision_docking_node) · 후진용 cmd_vel/odom
+        self.dock_id_pub = self.create_publisher(Int32, '/docking/target_marker_id', 10)
+        self.dock_start = self.create_client(Trigger, '/docking/start')
+        self.dock_cancel = self.create_client(Trigger, '/docking/cancel')
+        self.dock_done = threading.Event()
+        self.docking_active = False
+        self.create_subscription(Bool, '/docking_completed',
+                                 lambda m: m.data and self.dock_done.set(), 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.odom_xy = None
+        self.create_subscription(Odometry, '/odom', self.on_odom, 10)
 
         self.orders = collections.deque()
         self.order_cv = threading.Condition()
@@ -92,6 +118,9 @@ class Orchestrator(Node):
         self.state = state
         self.publish_state()
         self.get_logger().info(f'STATE → {state}')
+
+    def on_odom(self, msg):
+        self.odom_xy = (msg.pose.pose.position.x, msg.pose.pose.position.y)
 
     def publish_state(self):
         self.state_pub.publish(String(data=self.state))
@@ -184,18 +213,22 @@ class Orchestrator(Node):
         items = order['items']
         self.publish_order(order, 'started')
         try:
-            if p('enable_picker'):
-                self.set_state('PICKING')
-                self.publish_order(order, 'PICKING')
-                self.run_unit('picker', p('picker_timeout') * max(1, len(items)),
-                              'pick:' + ','.join(items) if items else 'start')
+            # 품목이 있는 창고 구역을 차례로 돌며 도킹 → 두산이 담기 → 후진
+            for zone, zone_items in self.split_by_zone(items):
+                if p('enable_pinky'):
+                    self.move_pinky(order, 'MOVING_TO_PICK', f'{zone}_pose', f'go:{zone}')
+                    self.dock(order, p(f'{zone}_marker'))
+                if p('enable_picker'):
+                    self.set_state('PICKING')
+                    self.publish_order(order, 'PICKING', f"{zone} 마커 {p(f'{zone}_marker')}")
+                    self.run_unit('picker', p('picker_timeout') * max(1, len(zone_items)),
+                                  'pick:' + ','.join(zone_items) if zone_items else 'start')
+                if p('enable_pinky'):
+                    self.undock(order, p(f'{zone}_undock'))
             if p('enable_pinky'):
-                self.set_state('MOVING_TO_PACK')
-                self.publish_order(order, 'MOVING_TO_PACK')
-                if p('signal_only'):
-                    self.run_unit('pinky', p('nav_timeout'))
-                else:
-                    self.navigate(p('pack_pose'), p('nav_timeout'))
+                # 두산이 담은 상자를 싣고 핑키가 OMX 포장 구역으로 이동
+                self.move_pinky(order, 'MOVING_TO_PACK', 'pack_pose', 'go:pack')
+                self.dock(order, p('pack_marker'))
             elif p('manual_transfer') and p('enable_packer'):
                 # 핑키 대신 사람이 박스를 OMX 앞으로 옮기고 관리자 화면에서 확인
                 self.confirm_event.clear()
@@ -206,19 +239,92 @@ class Orchestrator(Node):
                 self.set_state('PACKING')
                 self.publish_order(order, 'PACKING')
                 self.run_unit('packer', p('packer_timeout'))
-            if p('enable_pinky') and p('return_home') and not p('signal_only'):
-                self.set_state('RETURNING')
-                self.publish_order(order, 'RETURNING')
-                self.navigate(p('home_pose'), p('nav_timeout'))
+            if p('enable_pinky'):
+                self.undock(order, p('pack_undock'))
+            if p('enable_pinky') and p('return_home'):
+                self.move_pinky(order, 'RETURNING', 'home_pose', 'go:home')
             self.set_state('DONE')
             self.publish_order(order, 'DONE', f'{time.monotonic() - t0:.0f}s')
             self.get_logger().info(f"주문 {order['id']} 완료: {time.monotonic() - t0:.1f}s")
         except StageError as e:
             self.cancel_nav()
-            self.paused = True
+            self.cancel_dock()
+            # 정지 버튼(stopped)이면 항상 멈추고, 그 외 실패는 설정에 따라 넘기고 다음 주문 진행
+            if p('pause_on_error') or str(e) == 'stopped':
+                self.paused = True
             stage = self.state
             self.set_state(f'ERROR:{stage}:{e}')
             self.publish_order(order, 'ERROR', f'{stage}: {e}')
+
+    def split_by_zone(self, items):
+        """주문 품목을 창고 구역별로 나눈다 [(zone, [품목...]), ...]. 어느 구역에도 없는 품목은 zone_a."""
+        groups = {z: [] for z in ZONES}
+        for it in items:
+            zone = next((z for z in ZONES if it in self.get_parameter(f'{z}_items').value), ZONES[0])
+            groups[zone].append(it)
+        out = [(z, groups[z]) for z in ZONES if groups[z]]
+        return out or [(ZONES[0], [])]  # 품목 없는 신호 확인(start) 주문
+
+    def dock(self, order, marker):
+        """ArUco 마커에 정밀 도킹. docking: false 이거나 signal_only 면 건너뜀."""
+        if not self.get_parameter('docking').value or self.get_parameter('signal_only').value:
+            return
+        self.set_state('DOCKING')
+        self.publish_order(order, 'DOCKING', f'마커 {marker}')
+        if not self.dock_start.wait_for_service(timeout_sec=5.0):
+            raise StageError('도킹 노드 없음 (/docking/start, precision_docking 실행 확인)')
+        for _ in range(3):  # 도킹 노드가 놓치지 않게 몇 번 보냄 (팀 미션 스크립트와 같은 방식)
+            self.dock_id_pub.publish(Int32(data=int(marker)))
+            time.sleep(0.05)
+        self.dock_done.clear()
+        fut = self.dock_start.call_async(Trigger.Request())
+        self.wait_or_stop(fut.done, 5.0)
+        if not fut.result().success:
+            raise StageError(f'도킹 시작 거부: {fut.result().message}')
+        self.docking_active = True
+        self.wait_or_stop(self.dock_done.is_set, self.get_parameter('dock_timeout').value)
+        self.docking_active = False
+
+    def cancel_dock(self):
+        if self.docking_active:
+            self.dock_cancel.call_async(Trigger.Request())
+            self.docking_active = False
+        self.cmd_vel_pub.publish(Twist())
+
+    def undock(self, order, distance):
+        """도킹 자리에서 odom 기준으로 distance(m) 만큼 곧게 후진."""
+        if not self.get_parameter('docking').value or self.get_parameter('signal_only').value:
+            return
+        self.set_state('UNDOCKING')
+        self.publish_order(order, 'UNDOCKING')
+        self.odom_xy = None
+        self.wait_or_stop(lambda: self.odom_xy is not None, 3.0)
+        x0, y0 = self.odom_xy
+        back = Twist()
+        back.linear.x = -abs(self.get_parameter('undock_speed').value)
+        deadline = time.monotonic() + 30.0
+        try:
+            while math.hypot(self.odom_xy[0] - x0, self.odom_xy[1] - y0) < distance:
+                if self.stop_event.is_set():
+                    raise StageError('stopped')
+                if time.monotonic() > deadline:
+                    self.get_logger().warn('후진 시간 초과: 그 자리에서 다음 단계 진행')
+                    break
+                self.cmd_vel_pub.publish(back)
+                time.sleep(0.02)
+        finally:
+            for _ in range(5):  # 확실히 멈춤
+                self.cmd_vel_pub.publish(Twist())
+                time.sleep(0.05)
+
+    def move_pinky(self, order, state, pose_param, signal_cmd):
+        """핑키 이동 한 단계. 실제: Nav2 목표 전송 후 도착까지 대기 / signal_only: pinky_signal 에 명령만."""
+        self.set_state(state)
+        self.publish_order(order, state)
+        if self.get_parameter('signal_only').value:
+            self.run_unit('pinky', self.get_parameter('nav_timeout').value, signal_cmd)
+        else:
+            self.navigate(self.get_parameter(pose_param).value, self.get_parameter('nav_timeout').value)
 
     def wait_or_stop(self, done, timeout):
         """done() 이 참이 될 때까지 기다린다. 정지 요청 또는 시간 초과면 StageError."""

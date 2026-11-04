@@ -20,9 +20,9 @@ def main():
     host = socket.gethostname()
 
     def on_cmd(msg):
-        if msg.data != 'start':
+        if msg.data != 'start' and not msg.data.startswith('go:'):
             return
-        node.get_logger().info(f'신호 수신 (호스트 {host}) → done 전송')
+        node.get_logger().info(f'신호 수신: {msg.data} (호스트 {host}) → done 전송')
         pub.publish(String(data='done'))
 
     node.create_subscription(String, '/couping/pinky/cmd', on_cmd, 10)

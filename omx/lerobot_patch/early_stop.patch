@@ -1,0 +1,80 @@
+diff --git a/src/lerobot/scripts/lerobot_record.py b/src/lerobot/scripts/lerobot_record.py
+index 17c85706..b0376cd9 100644
+--- a/src/lerobot/scripts/lerobot_record.py
++++ b/src/lerobot/scripts/lerobot_record.py
+@@ -68,6 +68,8 @@ lerobot-record \
+ """
+ 
+ import logging
++import os
++import re
+ import time
+ from dataclasses import asdict, dataclass, field
+ from pathlib import Path
+@@ -278,6 +280,25 @@ class RecordConfig:
+ """
+ 
+ 
++def _couping_early_stop():
++    """[couping] 정책 실행 중 조건이 처음 맞으면 N초 뒤 에피소드를 끝낸다. 환경변수가 없으면 아무것도 안 함.
++
++    COUPING_EARLY_STOP="left_gripper.pos>=90:2"     → 왼쪽 그리퍼 값이 90 이상이 되면 2초 뒤 종료
++    COUPING_EARLY_STOP="left_gripper.pos>=55:2@10"  → 시작 10초 동안은 조건을 보지 않음
++    COUPING_EARLY_STOP_DRYRUN=1  → 끝내지 않고 '작업 종료 판정' 만 출력 (판정 확인용), 값도 0.5초마다 출력
++    값은 robot.get_observation() 의 키 (bi_omx_follower: left_/right_ + 모터 이름 + .pos, 0~100).
++    """
++    spec = os.environ.get("COUPING_EARLY_STOP", "").strip()
++    if not spec:
++        return None
++    m = re.fullmatch(r"([\w.]+)\s*(>=|<=)\s*(-?[\d.]+)(?::\s*([\d.]+))?(?:@\s*([\d.]+))?", spec)
++    if not m:
++        logging.warning(f"COUPING_EARLY_STOP 형식 오류, 무시함: {spec!r} (예: left_gripper.pos>=90:2@10)")
++        return None
++    return (m.group(1), m.group(2), float(m.group(3)), float(m.group(4) or 2.0), float(m.group(5) or 0.0),
++            os.environ.get("COUPING_EARLY_STOP_DRYRUN", "") not in ("", "0"))
++
++
+ @safe_stop_image_writer
+ def record_loop(
+     robot: Robot,
+@@ -338,6 +359,13 @@ def record_loop(
+ 
+     no_action_count = 0
+     timestamp = 0
++    early_stop = _couping_early_stop() if policy is not None else None  # [couping] 정책 실행 때만
++    early_hit_t = None
++    early_print_t = 0.0
++    if early_stop:
++        k_, op_, thr_, delay_, min_t_, dry_ = early_stop
++        logging.info(f"[couping] 조기 종료 조건: 시작 {min_t_:.0f}초 뒤부터 {k_} {op_} {thr_} 이 되면 {delay_}초 뒤 종료"
++                     + (" (판정만 출력, 끝내지 않음)" if dry_ else ""))
+     start_episode_t = time.perf_counter()
+     while timestamp < control_time_s:
+         start_loop_t = time.perf_counter()
+@@ -349,6 +377,26 @@ def record_loop(
+         # Get robot observation
+         obs = robot.get_observation()
+ 
++        # [couping] 조기 종료: 조건이 처음 맞은 시점부터 N초 뒤 루프 종료
++        if early_stop:
++            key, op, thr, delay, min_t, dry = early_stop
++            val = obs.get(key)
++            if dry and val is not None and timestamp - early_print_t >= 0.5:
++                early_print_t = timestamp
++                print(f"[couping] {timestamp:5.1f}초  {key}={float(val):.1f}", flush=True)
++            if (early_hit_t is None and val is not None and timestamp >= min_t
++                    and (val >= thr if op == ">=" else val <= thr)):
++                early_hit_t = time.perf_counter()
++                logging.info(f"[couping] {key}={float(val):.1f} 조건 충족 ({timestamp:.1f}초) → {delay}초 뒤 종료")
++            if early_hit_t is not None and time.perf_counter() - early_hit_t >= delay:
++                if dry:
++                    print(f"[couping] ===== 작업 종료 판정 ({timestamp:.1f}초) ===== (판정만, 계속 실행)", flush=True)
++                    early_hit_t = float("inf")  # 한 번만 출력
++                else:
++                    logging.info(f"[couping] 조기 종료 ({timestamp:.1f}초)")
++                    print(f"[couping] ===== 작업 종료 ({timestamp:.1f}초) =====", flush=True)
++                    break
++
+         # Applies a pipeline to the raw robot observation, default is IdentityProcessor
+         obs_processed = robot_observation_processor(obs)
+ 

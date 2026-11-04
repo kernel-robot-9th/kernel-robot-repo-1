@@ -83,16 +83,16 @@ class ControllerParams:
     camera_hfov_deg: float = 66.0
     fov_margin_deg: float = 7.0
     # velocity limits / dynamics
-    v_max: float = 0.08
-    v_terminal_max: float = 0.04
+    v_max: float = 0.12
+    v_terminal_max: float = 0.07
     v_min: float = 0.006
-    v_retreat: float = 0.04
+    v_retreat: float = 0.06
     w_max: float = 0.6
     w_min: float = 0.05
-    w_search: float = 0.35
-    a_lin: float = 0.25                 # command smoother limits
+    w_search: float = 0.25
+    a_lin: float = 0.35                 # command smoother limits
     a_ang: float = 1.5
-    a_dec_lin: float = 0.06             # profile deceleration for stopping
+    a_dec_lin: float = 0.10             # profile deceleration for stopping
     a_dec_ang: float = 0.8
     k_heading: float = 2.2
     # stage 1: intercept
@@ -105,7 +105,7 @@ class ControllerParams:
     max_retreat_distance: float = 0.65  # rotation centre -> wall, upper bound for backing off
     allow_retreat: bool = True          # True: allow backing off when near wall, capped by initial start position
     # stage 2: verification
-    settle_time: float = 0.5
+    settle_time: float = 0.3
     verify_min_cam_updates: int = 3
     verify_timeout: float = 2.5
     # stage 3: terminal
@@ -123,7 +123,9 @@ class ControllerParams:
     # robustness
     max_retries: int = 5
     docking_timeout: float = 180.0
-    search_timeout: float = 30.0
+    search_sweep_deg: float = 30.0      # SEARCH: 제자리에서 좌우로 이 각도까지 번갈아 회전 (10/23, 한 방향 연속 회전 대신)
+    search_full_turn: bool = False      # True 면 좌우 번갈아 대신 왼쪽으로 계속 회전 (한 바퀴). 식자재 선반(마커 4·2)용 (10/27)
+    search_timeout: float = 45.0     # 마커 탐색 회전 시간: search_angular_vel 0.15 rad/s 로 한 바퀴(2π/0.15≈42s) + 여유 (10/23, 30s 는 약 260°만 돎)
     cam_lost_timeout: float = 1.2       # camera age that triggers REACQUIRE in far phases
     blind_sigma_y: float = 0.006        # max lateral sigma tolerated while blind
     sensor_fresh_age: float = 0.35
@@ -190,8 +192,9 @@ class DockingController:
         self.reason = ''
         self.target: dict = {}
         self.dwell_start = None
-        self.last_bearing_sign = 1.0
-        self.search_turned = 0.0
+        self.last_bearing_sign = 1.0   # 탐색 첫 회전 방향 (+1 = 왼쪽). 마커를 본 뒤 놓치면 마지막으로 본 쪽부터
+        self.search_turned = 0.0       # SEARCH 진입 뒤 누적 회전각 [rad] (명령 각속도 적분)
+        self.search_dir = 1.0
         self.y_at_drive_start = 0.0
         self.cam_updates_at_phase = 0
         self.lidar_updates_at_phase = 0
@@ -203,6 +206,8 @@ class DockingController:
 
     def start(self, now: float):
         self.reset(Phase.SEARCH)
+        self.search_turned = 0.0
+        self.search_dir = 1.0 if self.p.search_full_turn else self.last_bearing_sign
         self.start_time = now
         self.phase_start = now
         self._event(now, Phase.SEARCH, 'docking started')
@@ -227,6 +232,9 @@ class DockingController:
         self.phase = phase
         self.phase_start = now
         self.reason = reason
+        if phase == Phase.SEARCH:
+            self.search_turned = 0.0
+            self.search_dir = self.last_bearing_sign
         self.dwell_start = None
         self.cam_updates_at_phase = cam_updates
         self.lidar_updates_at_phase = lidar_updates
@@ -321,6 +329,8 @@ class DockingController:
         if not self.active:
             v, w = 0.0, 0.0
             self.smoother.reset()
+        if self.phase == Phase.SEARCH:
+            self.search_turned += w * dt
         self.max_abs_w = max(self.max_abs_w, abs(w))
         self.path_length += abs(v) * dt
         out.v, out.w, out.phase = v, w, self.phase
@@ -368,7 +378,15 @@ class DockingController:
                 return 0.0, 0.0
             if t_phase < 0.6:   # look first before turning
                 return 0.0, 0.0
-            return 0.0, self.last_bearing_sign * p.w_search
+            if p.search_full_turn:   # 왼쪽으로 계속 (0.15 rad/s × search_timeout 45s ≈ 387°)
+                return 0.0, p.w_search
+            # 좌 30° → 우 30° → 좌 30° … 번갈아 회전 (한 방향으로 계속 돌지 않음)
+            lim = math.radians(p.search_sweep_deg)
+            if self.search_dir > 0 and self.search_turned >= lim:
+                self.search_dir = -1.0
+            elif self.search_dir < 0 and self.search_turned <= -lim:
+                self.search_dir = 1.0
+            return 0.0, self.search_dir * p.w_search
 
         # ---------------------------------------------------------- ACQUIRE
         if self.phase == Phase.ACQUIRE:
@@ -448,7 +466,7 @@ class DockingController:
             v = clamp(math.sqrt(2.0 * p.a_dec_lin * dist_s), 0.025, p.v_max)
             # Gentle slowdown as we near the centerline to avoid overshooting
             if abs(est.y) < 0.08:
-                v = min(v, 0.035)
+                v = min(v, 0.06)
             v *= clamp(1.0 - abs(err) / math.radians(35.0), 0.0, 1.0)
             self.target = {'psi_cmd': psi_cmd, 'fov_limited': limited,
                            'staging_distance': stage_d}
@@ -499,7 +517,7 @@ class DockingController:
             psi_ref = sat(-est.y / p.fine_lookahead, psi_lim)
             w = sat(p.k_heading * (psi_ref - est.psi), p.w_max * 0.5)
             v = min(p.v_terminal_max, math.sqrt(2.0 * p.a_dec_lin * max(remain, 0.0)),
-                    0.8 * remain + 0.004)
+                    1.2 * remain + 0.008)
             v = max(v, p.v_min)
             self.target = {'psi_cmd': psi_ref, 'psi_lim': psi_lim, 'remain': remain}
             return v, w

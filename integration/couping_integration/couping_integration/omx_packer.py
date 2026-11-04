@@ -33,6 +33,8 @@ class OmxPacker(Node):
         self.declare_parameter('left_cam', '')     # 비우면 run_act.sh 기본값
         self.declare_parameter('right_cam', '')
         self.declare_parameter('head_cam', '')
+        self.declare_parameter('cam_fourcc', '')   # 예: MJPG (비우면 run_act.sh 기본 형식)
+        self.declare_parameter('early_stop', 'left_gripper.pos>=55:0@5')  # COUPING_EARLY_STOP 조기 종료 조건
         self.declare_parameter('ports', [''])      # signal_only 때 확인할 팔 포트들
         self.declare_parameter('fake', False)
         self.declare_parameter('fake_seconds', 5.0)
@@ -98,9 +100,12 @@ class OmxPacker(Node):
         if get('run_script'):
             for k, v in (('POLICY_PATH', get('policy_path')), ('LEFT_CAM', get('left_cam')),
                          ('RIGHT_CAM', get('right_cam')), ('HEAD_CAM', get('head_cam')),
-                         ('TASK', get('task')), ('EPISODE_TIME', str(get('episode_time')))):
+                         ('TASK', get('task')), ('EPISODE_TIME', str(get('episode_time'))),
+                         ('CAM_FOURCC', get('cam_fourcc'))):
                 if v:
                     env[k] = os.path.expanduser(v)
+            if get('early_stop'):
+                env['COUPING_EARLY_STOP'] = str(get('early_stop'))
             script = os.path.expanduser(get('run_script'))
             self.log_path = os.path.join(get('log_dir'), 'run_act_latest.log')
             self.get_logger().info(f'{script} 실행 (policy={env.get("POLICY_PATH", "스크립트 기본값")}), '

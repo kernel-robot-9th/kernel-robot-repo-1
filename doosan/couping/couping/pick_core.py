@@ -29,6 +29,7 @@ DEFAULTS = {
     'open': 375,            # 접근할 때 그리퍼 열림 (0 닫힘 ~ 750 완전 열림)
     'release': 375,         # 내려놓을 때 여는 정도
     'force': 300,           # 잡는 힘
+    'grip_wait': 3.0,       # 그리퍼를 닫은 뒤 다 잡을 때까지 기다리는 시간 s (이후에 들어올림)
     'approach': 150.0,      # 컵 정면 대기 거리 mm
     'depth': 7.0,           # 컵 중심 대비 추가 전진 mm (10/15 tide 시험: 7mm 더 들어가야 잘 잡힘)
     'dz': 0.0,              # 목표 높이 보정 mm
@@ -56,7 +57,7 @@ class PickFailed(NotPickable):
 
 
 # ---------- 인식 ----------
-def detect(node, shelf_ymin, timeout=20.0):
+def detect(node, shelf_ymin, timeout=120.0):
     cli = node.create_client(Trigger, '/couping/vision/detect')
     if not cli.wait_for_service(timeout_sec=5.0):
         raise PickError('비전 노드가 없습니다 (ros2 launch couping vision.launch.py)')
@@ -124,7 +125,8 @@ def plan(target, p, slot=1, no_place='hold'):
         {'kind': 'grip', 'desc': f"그리퍼 열기 ({p['open']})", 'pos': p['open'], 'cur': 200},
         L('컵 40mm 앞까지 전진', near, slow=True),
         L('컵 위치까지 전진', grasp, slow=True),
-        {'kind': 'grip', 'desc': f"그리퍼 닫기 (힘 {p['force']})", 'pos': 0, 'cur': p['force']},
+        {'kind': 'grip', 'desc': f"그리퍼 닫기 (힘 {p['force']}, {p['grip_wait']:.1f}초 대기)", 'pos': 0, 'cur': p['force'],
+         'wait': p['grip_wait']},  # 다 잡은 뒤에 들어올림 (닫으면서 올라가지 않게)
         L(f"{p['lift']:.0f}mm 들어올리기", grasp + up, slow=True),
         L('수평으로 빼기', pre + up, slow=True),
     ]
@@ -143,9 +145,9 @@ def plan(target, p, slot=1, no_place='hold'):
             to_front,
             {'kind': 'movej', 'desc': '핑키 위로 이동', 'posj': above['posj']},
             {'kind': 'movel_x', 'desc': f'{slot}번 자리 위로', 'x': over},
-            {'kind': 'movel_x', 'desc': f'{slot}번 자리에 내리기', 'x': place['posx'], 'slow': True},
+            {'kind': 'movel_x', 'desc': f'{slot}번 자리에 내리기', 'x': place['posx']},  # 박스 안으로 떨어뜨림: 일반 속도 (10/26)
             release,
-            {'kind': 'movel_x', 'desc': '위로 빠지기', 'x': over, 'slow': True},
+            {'kind': 'movel_x', 'desc': '위로 빠지기', 'x': over},
             to_observe,
         ]
         result = 'placed'
@@ -208,7 +210,7 @@ def execute(dsr, steps, p, log=print, confirm=None):
         if s['kind'] == 'grip':
             if not gripper_cmd(int(s['pos']), int(s['cur'])):
                 raise PickError(f"그리퍼 명령 실패: {s['desc']}")
-            time.sleep(1.5)
+            time.sleep(s.get('wait', 1.5))
             continue
         if s['kind'] == 'movej':
             ret = dsr.movej(dsr.posj(*s['posj']), vel=p['velj'], acc=p['accj'])
